@@ -1,0 +1,4 @@
+
+C:\Python27\python.exe ..\Generate_Random_Chromosomes.py chr_sizes__test_001.tsv
+
+C:\Python27\python.exe ..\Generate_Random_Chromosomes.py chr_sizes__test_001.tsv -o chr_sizes__test_002 -w 40 -m GC 90
