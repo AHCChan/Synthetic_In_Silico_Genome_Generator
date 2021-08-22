@@ -131,6 +131,10 @@ import random as Random
 
 
 
+import _Controlled_Print as PRINT
+
+
+
 # Enums ########################################################################
 
 class METHOD:
@@ -249,6 +253,14 @@ for i in LIST__gc: DICT__methods[i] = METHOD.GC
 
 
 
+# Apply Globals ################################################################
+
+PRINT.PRINT_ERRORS = PRINT_ERRORS
+PRINT.PRINT_PROGRESS = PRINT_PROGRESS
+PRINT.PRINT_METRICS = PRINT_METRICS
+
+
+
 # Functions ####################################################################
 
 def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
@@ -300,7 +312,7 @@ def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
     outcomes = [] # Outcomes are added to the list after every chromosome
 
     # Main loop
-    printP(STR__GPC_begin)
+    PRINT.printP(STR__GPC_begin)
     f = open(path_in, "U")
     line = f.readline().strip()
     if not line: # Empty chromosome sizes file
@@ -326,7 +338,7 @@ def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
         # Next line
         line = f.readline().strip()
     f.close()
-    printP(STR__GPC_complete)
+    PRINT.printP(STR__GPC_complete)
 
     # Reporting
     if method in [METHOD.EQUAL, METHOD.GC]:
@@ -516,11 +528,11 @@ def Report_Metrics__CUTOFFS(outcomes):
     str_Gp = Pad_Str(str_Gp, max_size_p, " ", 0)
     str_Tp = Pad_Str(str_Tp, max_size_p, " ", 0)
     # Print
-    printM(STR__metrics_N.format(N = str_N))
-    printM(STR__metrics_A.format(N = str_A, P = str_Ap))
-    printM(STR__metrics_C.format(N = str_C, P = str_Cp))
-    printM(STR__metrics_G.format(N = str_G, P = str_Gp))
-    printM(STR__metrics_T.format(N = str_T, P = str_Tp))
+    PRINT.printM(STR__metrics_N.format(N = str_N))
+    PRINT.printM(STR__metrics_A.format(N = str_A, P = str_Ap))
+    PRINT.printM(STR__metrics_C.format(N = str_C, P = str_Cp))
+    PRINT.printM(STR__metrics_G.format(N = str_G, P = str_Gp))
+    PRINT.printM(STR__metrics_T.format(N = str_T, P = str_Tp))
 
 
 
@@ -584,14 +596,14 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
     Parse the command line input and call the Generate_Synthetic_Genome function
     with appropriate arguments if the command line input is valid.
     """
-    printP(STR__parsing_args)
+    PRINT.printP(STR__parsing_args)
     # Remove the runtime environment variable and program name from the inputs
     inputs = Strip_Non_Inputs(raw_command_line_input)
 
     # No inputs
     if not inputs:
-        printE(STR__no_inputs)
-        printE(STR__use_help)
+        PRINT.printE(STR__no_inputs)
+        PRINT.printE(STR__use_help)
         return 1
   
     # Help option
@@ -601,16 +613,16 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
 
     # Initial validation (Redundant in current version)
     if len(inputs) < 1:
-        printE(STR__insufficient_inputs)
-        printE(STR__use_help)
+        PRINT.printE(STR__insufficient_inputs)
+        PRINT.printE(STR__use_help)
         return 1
     
     # Validate mandatroy inputs
     path_in = inputs.pop(0)
     valid = Validate_Read_Path(path_in)
     if valid == 1:
-        printE(STR__IO_error_read.format(f = path_in))
-        printE(STR__use_help)
+        PRINT.printE(STR__IO_error_read.format(f = path_in))
+        PRINT.printE(STR__use_help)
         return 1
     
     # Set up rest of the parsing
@@ -625,15 +637,15 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
         try: # Second argument
             arg2 = inputs.pop(0)
         except:
-            printE(STR__insufficient_inputs)
-            printE(STR__use_help)
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
             return 1
         if arg == "-o": # Output files
             path_out = arg2
         elif arg == "-w": # File width
             width = Validate_Width(arg2)
             if width == -1:
-                printE(STR__invalid_width.format(s = arg2))
+                PRINT.printE(STR__invalid_width.format(s = arg2))
                 return 1
         elif arg == "-m": # Method
             if arg2 in LIST__equal:
@@ -642,35 +654,35 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
                 try:
                     arg3 = inputs.pop(0)
                 except:
-                    printE(STR__specify_GC_content)
+                    PRINT.printE(STR__specify_GC_content)
                     return 1
                 GC = Validate_GC_Content(arg3)
                 if GC == -1:
-                    printE(STR__invalid_GC.format(s = arg3))
+                    PRINT.printE(STR__invalid_GC.format(s = arg3))
                     return 1
                 method_supplementary = Generate_Cutoffs_GC(GC)
                 
             else:
-                printE(STR__invalid_method)
-                printE(STR__use_help)
+                PRINT.printE(STR__invalid_method)
+                PRINT.printE(STR__use_help)
                 return 1
         else: # Invalid
             arg = Strip_X(arg)
-            printE(STR__invalid_argument.format(s = arg))
-            printE(STR__use_help)
+            PRINT.printE(STR__invalid_argument.format(s = arg))
+            PRINT.printE(STR__use_help)
             return 1
 
     # Validate output path
     valid_out = Validate_Folder_Path(path_out, path_in)
     if valid_out == 0: pass
-    elif valid_out == 1: printM(STR__overwrite_accept)
+    elif valid_out == 1: PRINT.printM(STR__overwrite_accept)
     else:
-        if valid_out == 2: printE(STR__IO_error_write_cannot)
-        elif valid_out == 3: printE(STR__overwrite_decline)
-        elif valid_out == 4: printE(STR__IO_error_write_forbid)
-        elif valid_out == 5: printE(STR__IO_error_write_nonexistent)
-        elif valid_out == 6: printE(STR__read_file_invalid)
-        elif valid_out == 7: printE(STR__IO_error_write_unexpected)
+        if valid_out == 2: PRINT.printE(STR__IO_error_write_cannot)
+        elif valid_out == 3: PRINT.printE(STR__overwrite_decline)
+        elif valid_out == 4: PRINT.printE(STR__IO_error_write_forbid)
+        elif valid_out == 5: PRINT.printE(STR__IO_error_write_nonexistent)
+        elif valid_out == 6: PRINT.printE(STR__read_file_invalid)
+        elif valid_out == 7: PRINT.printE(STR__IO_error_write_unexpected)
         return 1
     
     # Run program
@@ -680,8 +692,8 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
     # Exit
     if exit_state == 0: return 0
     else:
-        if exit_state == 1: printE(STR__read_file_invalid)
-        printE(STR__use_help)
+        if exit_state == 1: PRINT.printE(STR__read_file_invalid)
+        PRINT.printE(STR__use_help)
         return 1
 
 
@@ -755,7 +767,6 @@ def Validate_Folder_Path(folder_path, chr_sizes_filepath):
     while line:
         values = line.split("\t")
         temp_path = folder_path + "\\" + values[0] + FILEMOD__FASTA
-        print temp_path
         # See if file already exists
         try:
             exist = os.path.exists(temp_path)
@@ -902,34 +913,6 @@ def Strip_Non_Inputs(list1):
     """
     if NAME in list1[0]: return list1[1:]
     return list1[2:]
-
-
-
-# Controlled Print Statements ##################################################
-
-def printE(string):
-    """
-    A wrapper for the basic print statement.
-    It is intended to be used for printing error messages.
-    It can be controlled by a global variable.
-    """
-    if PRINT_ERRORS: print(string)
-
-def printP(string):
-    """
-    A wrapper for the basic print statement.
-    It is intended to be used for printing progress messages.
-    It can be controlled by a global variable.
-    """
-    if PRINT_PROGRESS: print(string)
-
-def printM(string):
-    """
-    A wrapper for the basic print statement.
-    It is intended to be used for printing file metrics.
-    It can be controlled by a global variable.
-    """
-    if PRINT_METRICS: print(string)
 
 
 
