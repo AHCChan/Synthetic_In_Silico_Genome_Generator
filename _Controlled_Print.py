@@ -1,4 +1,4 @@
-HELP_DOC = """
+"""
 CONTROLLED PRINT
 (version 1.0)
 by Angelo Chan

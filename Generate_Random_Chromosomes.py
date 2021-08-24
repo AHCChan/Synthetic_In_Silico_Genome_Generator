@@ -132,6 +132,7 @@ import random as Random
 
 
 import _Controlled_Print as PRINT
+from _Command_Line_Parser import *
 
 
 
@@ -536,59 +537,6 @@ def Report_Metrics__CUTOFFS(outcomes):
 
 
 
-def Pad_Str(string, size, char=" ", side=0):
-    """
-    Return a padded version of a string.
-    Return the original string if the desired string length is smaller than the
-    length of the original string.
-    
-    @string
-            (str)
-            The string to be padded.
-    @size
-            (int)
-            The length of the final string.
-    @char   
-            (str)
-            The character used to pad the string.
-            (DEFAULT: whitespace)
-    @side
-            (int)
-            An integer indicating which side the padding is to be added.
-            0 for the padding to be added to the left.
-            Any other integer for the padding to be added to the right.
-            (DEFAULT: left)
-    
-    Pad_Str(str, int, str, int) -> str
-    """
-    length = len(string)
-    difference = size - length
-    if difference < 0: return string
-    padding = difference * char
-    if side == 0: return padding+string
-    return string+padding
-
-def Trim_Percentage_Str(string, max_decimal_places):
-    """
-    Return a trimmed version of a string containing a percentage.
-    
-    @string
-            (str)
-            The string to be trimmed.
-    @max_decimal_places
-            (int)
-            The maximum number of decimal places the resulting string will
-            contain.
-    
-    Trim_Percentage_Str(str, int) -> str
-    """
-    string = string + max_decimal_places * "0"
-    index = string.index(".") + max_decimal_places + 1
-    string = string[:index]
-    return string
-
-
-
 # Command Line Parsing #########################################################
 
 def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
@@ -598,7 +546,7 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
     """
     PRINT.printP(STR__parsing_args)
     # Remove the runtime environment variable and program name from the inputs
-    inputs = Strip_Non_Inputs(raw_command_line_input)
+    inputs = Strip_Non_Inputs(raw_command_line_input, NAME)
 
     # No inputs
     if not inputs:
@@ -643,7 +591,7 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
         if arg == "-o": # Output files
             path_out = arg2
         elif arg == "-w": # File width
-            width = Validate_Width(arg2)
+            width = PARSE.Validate_Int_Positive(arg2)
             if width == -1:
                 PRINT.printE(STR__invalid_width.format(s = arg2))
                 return 1
@@ -697,21 +645,6 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
         return 1
 
 
-
-def Validate_Read_Path(filepath):
-    """
-    Validates the filepath of the input file.
-    Return 0 if the filepath is valid.
-    Return 1 otherwise.
-    
-    Validate_Read_Path(str) -> int
-    """
-    try:
-        f = open(filepath, "U")
-        f.close()
-        return 0
-    except:
-        return 1
 
 def Validate_Folder_Path(folder_path, chr_sizes_filepath):
     """
@@ -785,60 +718,6 @@ def Validate_Folder_Path(folder_path, chr_sizes_filepath):
             if confirm not in LIST__yes: return 3        
         return 1
     return 0
-    
-
-
-def Generate_Default_Output_Folder_Path(path_in):
-    """
-    Generate output folder path based on the provided input filepaths.
-
-    Generate_Default_Output_Paths(str) -> str
-    """
-    index = Find_Period_Index(path_in)
-    if index == -1: return path_in
-    else: return path_in[:index]
-
-def Find_Period_Index(filepath):
-    """
-    Return the index of a filepath's file extension string. (The index of the
-    period.)
-    
-    Return -1 if the file name has no file extension.
-    
-    Find_Period_Index(str) -> int
-    """
-    # Find period
-    index_period = filepath.rfind(".")
-    if index_period == -1: return -1 # No period
-    # Slash and backslash
-    index_slash = filepath.rfind("/")
-    index_bslash = filepath.rfind("\\")
-    if index_slash == index_bslash == -1: return index_period # Simple path
-    # Complex path
-    right_most = max(index_slash, index_bslash)
-    if right_most > index_period: return -1 # Period in folder name only
-    return index_period
-
-
-
-def Validate_Width(string):
-    """
-    Validates and returns the width specified.
-    Return -1 if the input is invalid.
-    
-    @string
-        (str)
-        A string denoting the maximum number of chars per line in the output
-        file.
-        
-    Validate_Column_Number(str) -> int
-    """
-    try:
-        n = int(string)
-    except:
-        return -1
-    if n < 1: return -1
-    return n
 
 
 
@@ -900,19 +779,6 @@ def Generate_Cutoffs_GC(gc_content):
     # Check and return
     if cutoff_g >= 1: return []
     return [cutoff_a, cutoff_c, cutoff_g]
-
-
-
-def Strip_Non_Inputs(list1):
-    """
-    Remove the runtime environment variable and program name from the inputs.
-    Assumes this module was called and the name of this module is in the list of
-    command line inputs.
-    
-    Strip_Non_Inputs(list<str>) -> list<str>
-    """
-    if NAME in list1[0]: return list1[1:]
-    return list1[2:]
 
 
 
