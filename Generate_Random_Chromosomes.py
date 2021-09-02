@@ -18,7 +18,7 @@ specified by the user, or automatically generated.
 USAGE:
     
     python27 Generate_Random_Chromosomes.py <chr_sizes_file>
-            [-o <output_folder] [-w <file_width] [-m <method> [m2]]
+            [-o <output_folder>] [-w <file_width>] [-m <method> [m2]]
 
 
 
@@ -88,7 +88,7 @@ EXAMPLES:
 USAGE:
     
     python27 Generate_Random_Chromosomes.py <chr_sizes_file>
-            [-o <output_folder] [-w <file_width] [-m <method> [*]]
+            [-o <output_folder>] [-w <file_width>] [-m <method> [*]]
 """
 
 NAME = "Generate_Random_Chromosomes.py"
