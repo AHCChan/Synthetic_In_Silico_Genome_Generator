@@ -327,3 +327,32 @@ uniformly distributed values to have. The maximum distance must be a
 non-negative number."""]
 
 
+
+
+"""
+NOTES: (Delete later)
+def Test(multiplier, alpha, beta):
+	total = 0
+	for i in range(1000000):
+		x = int(random.gammavariate(alpha, beta) * 0.5 * multiplier + 0.5)
+		total += x
+	print total/1000000.0
+
+def Test2(multiplier, alpha, beta):
+	total = 0
+	count = 0
+	for i in range(100):
+		if multiplier > 0:
+			x = int(random.gammavariate(alpha, beta) * multiplier + 0.5)
+			if x > multiplier: count += 1
+		else:
+			x = int(random.gammavariate(alpha, beta) * multiplier + 0.5) + -2 * multiplier
+			if x > -multiplier: count += 1
+		total += x
+		print x
+	print
+	print count
+	print total/100.0
+"""
+
+
