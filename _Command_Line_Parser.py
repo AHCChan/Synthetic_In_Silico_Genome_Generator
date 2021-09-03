@@ -26,6 +26,44 @@ import os
 
 # Strings ######################################################################
 
+STR__no_inputs = "\nERROR: No inputs were given."
+STR__insufficient_inputs = "\nERROR: Not enough inputs were given."
+
+STR__IO_error_read = "\nERROR: Input file does not exist or could not be "\
+        "opened."
+
+STR__IO_error_write_folder_nonexistent = """
+ERROR: You specified an output folder which does not exist and cannot be
+created. Please specify a different output folder."""
+STR__IO_error_write_folder_cannot = """
+ERROR: You specified an output folder which you do not have the authorization
+to write into. Please specify a different output folder."""
+STR__IO_error_write_folder_forbid = """
+ERROR: You specified an output folder which already exists and the administrator
+for this program has forbidden all overwrites. Please specify a different
+output folder, move the currently existing folder, or configure the default
+options in Generate_Random_Chromosomes.py."""
+STR__IO_error_write_unexpected = """
+ERROR: An unexpected error occured with the specified output path. Contact the
+developers because this error should never be triggered from normal usage of
+this software."""
+
+STR__overwrite_confirm = "\nFile already exists in:\n\t{f}\nDo you wish to "\
+        "overwrite it? (y/n): "
+
+STR__overwrite_accept = "\nWARNING: Existing files will be overwritten."
+STR__overwrite_decline = "\nThe user has opted not to overwrite existing "\
+        "files.\nThe program will now terminate."
+
+STR__invalid_width = """
+ERROR: Invalid width: {s}
+Please specify a positive integer.
+"""
+
+STR__parsing_args = "\nParsing arguments..."
+
+
+
 # Lists ########################################################################
 
 LIST__yes = ["Y", "y", "YES", "Yes", "yes", "T", "t", "TRUE", "True", "true"]

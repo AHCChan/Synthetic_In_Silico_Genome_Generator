@@ -151,48 +151,8 @@ STR__use_help = "\nUse the -h option for help:\n\t python "\
 
 
 
-STR__no_inputs = "\nERROR: No inputs were given."
-STR__insufficient_inputs = "\nERROR: Not enough inputs were given."
-
-
-
-STR__IO_error_read = "\nERROR: Input file does not exist or could not be "\
-        "opened."
-
 STR__read_file_invalid = "\nERROR: Chromosome names could not be derived from "\
         "chromosome sizes file."
-
-
-
-STR__overwrite_confirm = "\nFile already exists in:\n\t{f}\nDo you wish to "\
-        "overwrite it? (y/n): "
-
-STR__overwrite_accept = "\nWARNING: Existing files will be overwritten."
-STR__overwrite_decline = "\nThe user has opted not to overwrite existing "\
-        "files.\nThe program will now terminate."
-
-STR__IO_error_write_nonexistent = """
-ERROR: You specified an output folder which does not exist and cannot be
-created. Please specify a different output folder."""
-STR__IO_error_write_cannot = """
-ERROR: You specified an output folder which you do not have the authorization
-to write into. Please specify a different output folder."""
-STR__IO_error_write_forbid = """
-ERROR: You specified an output folder which already exists and the administrator
-for this program has forbidden all overwrites. Please specify a different
-output folder, move the currently existing folder, or configure the default
-options in Generate_Random_Chromosomes.py."""
-STR__IO_error_write_unexpected = """
-ERROR: An unexpected error occured with the specified output path. Contact the
-developers because this error should never be triggered from normal usage of
-this software."""
-
-
-
-STR__invalid_width = """
-ERROR: Invalid width: {s}
-Please specify a positive integer.
-"""
 
 
 
@@ -218,17 +178,15 @@ decimal fraction."""
 
 
 
-STR__metrics_N = "\nTotal_N: {N}"
-STR__metrics_A = "Total_A: {N} ( {P}% )"
-STR__metrics_C = "Total_C: {N} ( {P}% )"
-STR__metrics_G = "Total_G: {N} ( {P}% )"
-STR__metrics_T = "Total_T: {N} ( {P}% )"
+STR__metrics_N = "\nTotal N: {N}"
+STR__metrics_A = "Total A: {N} ( {P}% )"
+STR__metrics_C = "Total C: {N} ( {P}% )"
+STR__metrics_G = "Total G: {N} ( {P}% )"
+STR__metrics_T = "Total T: {N} ( {P}% )"
 
-STR__parsing_args = "\nParsing arguments..."
+STR__GSC_begin = "\nRunning Generate_Random_Chromosomes..."
 
-STR__GPC_begin = "\nRunning Generate_Random_Chromosomes..."
-
-STR__GPC_complete = "\nGenerate_Random_Chromosomes successfully finished."
+STR__GSC_complete = "\nGenerate_Random_Chromosomes successfully finished."
 
 
 
@@ -313,7 +271,7 @@ def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
     outcomes = [] # Outcomes are added to the list after every chromosome
 
     # Main loop
-    PRINT.printP(STR__GPC_begin)
+    PRINT.printP(STR__GSC_begin)
     f = open(path_in, "U")
     line = f.readline().strip()
     if not line: # Empty chromosome sizes file
@@ -339,7 +297,7 @@ def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
         # Next line
         line = f.readline().strip()
     f.close()
-    PRINT.printP(STR__GPC_complete)
+    PRINT.printP(STR__GSC_complete)
 
     # Reporting
     if method in [METHOD.EQUAL, METHOD.GC]:
@@ -625,10 +583,11 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
     if valid_out == 0: pass
     elif valid_out == 1: PRINT.printM(STR__overwrite_accept)
     else:
-        if valid_out == 2: PRINT.printE(STR__IO_error_write_cannot)
+        if valid_out == 2: PRINT.printE(STR__IO_error_write_folder_cannot)
         elif valid_out == 3: PRINT.printE(STR__overwrite_decline)
-        elif valid_out == 4: PRINT.printE(STR__IO_error_write_forbid)
-        elif valid_out == 5: PRINT.printE(STR__IO_error_write_nonexistent)
+        elif valid_out == 4: PRINT.printE(STR__IO_error_write_folder_forbid)
+        elif valid_out == 5:
+            PRINT.printE(STR__IO_error_write_folder_nonexistent)
         elif valid_out == 6: PRINT.printE(STR__read_file_invalid)
         elif valid_out == 7: PRINT.printE(STR__IO_error_write_unexpected)
         return 1
