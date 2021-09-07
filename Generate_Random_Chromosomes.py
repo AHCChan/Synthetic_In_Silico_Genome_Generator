@@ -229,7 +229,7 @@ def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
     
     @path_in
             (str - filepath)
-            The filepaths of the chromosome sizes file used to determine the
+            The filepath of the chromosome sizes file used to determine the
             size of the resulting synthetic chromosomes. 
     @path_out
             (str - dirpath)

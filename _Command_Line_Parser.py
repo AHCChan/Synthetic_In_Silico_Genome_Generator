@@ -178,6 +178,20 @@ def Find_Period_Index(filepath):
     if right_most > index_period: return -1 # Period in folder name only
     return index_period
 
+def Get_Extension(filepath):
+    """
+    Return the file extension for the file specified by [filepath].
+    
+    Return an empty string if the file has no extension.
+    
+    Assumes [filepath] is the filepath for a file. If a directory path is
+    supplied, an empty string will also be returned.
+    
+    Get_Extension(str) -> str
+    """
+    index_period = Find_Period_Index(filepath)
+    if index_period == -1: return ""
+    return filepath[index_period+1:]
 
 
 def Validate_Int_Positive(string):

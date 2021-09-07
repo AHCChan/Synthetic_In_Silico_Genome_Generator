@@ -49,7 +49,7 @@ USAGE:
     python27 Generate_Fragments.py <input_folder> [-o <output_filepath] [-d
             <depth_of_coverage>] [-c N|G|U <stdev>|<alpha>|<max_dist>] [-r
             <read_length>] [-l <avg_frag_len>] [-f N|G|U
-            <stdev>|<alpha>|<max_dist>]
+            <stdev>|<alpha>|<max_dist>] [-m <method> [method_sup]...]
 
 
 
@@ -162,6 +162,20 @@ OPTIONAL:
         Ex. "-c N 50" signifies that the fragment sizes follow a normal
         distribution, with a standard deviation of 50. (The average read length
         is specified using the "-r" flag.)
+    
+    method
+        
+        (DEFAULT: ALL)
+        Method of deciding where fragments can be generated. Fragments generated
+        using restriction enzymes will only occur at certain locations, while
+        fragments generated using sonication can start or begin at any
+        nucleotide.
+    
+    method_sup
+        
+        Supplementary inputs, as required, for deciding where fragments can be
+        generated. Currently not reelvant because the only method implemented
+        does not require any additional inputs.
 
 
 
@@ -227,7 +241,7 @@ USAGE:
     python27 Generate_Fragments.py <input_folder> [-o <output_filepath] [-d
             <depth_of_coverage>] [-c N|G|U <stdev>|<alpha>|<max_dist>] [-r
             <read_length>] [-l <avg_frag_len>] [-f N|G|U
-            <stdev>|<alpha>|<max_dist>]
+            <stdev>|<alpha>|<max_dist>] [-m <method> [method_sup]...]
 """
 
 NAME = "Generate_Fragments.py"
@@ -263,6 +277,7 @@ DEFAULT__cov_dist = 1 # DIST.GAMMA = 1. Alter this if the DIST enum is altered
 DEFAULT__cov_num = 1
 DEFAULT__frag_dist = 0 # DIST.NORMAL = 0. Alter this if the DIST enum is altered
 DEFAULT__frag_num = 50
+DEFAULT__method = 0
 
 
 
@@ -288,6 +303,9 @@ class DIST: # For Distribution
     NORMAL=0 # If this is changed, sync relevant defaults
     GAMMA=1
     UNIFORM=2
+
+class METHOD:
+    ALL=0
 
 
 
@@ -328,6 +346,174 @@ non-negative number."""]
 
 
 
+# Lists ########################################################################
+
+LIST__normal = ["N", "n", "NORMAL", "Normal", "normal", "NORM", "Norm", "norm"]
+LIST__gamma = ["G", "g", "GAMMA", "Gamma", "gamma"]
+LIST__uniform = ["U", "u", "UNIFORM", "Uniform", "uniform", "UNI", "Uni", "uni"]
+
+LIST__all = ["A", "a", "ALL", "All", "all"]
+
+
+
+# Dictionaries #################################################################
+
+DICT__dists = {}
+for i in LIST__normal: DICT__dists[i] = DIST.NORMAL
+for i in LIST__gamma: DICT__dists[i] = DIST.GAMMA
+for i in LIST__uniform: DICT__dists[i] = DIST.UNIFORM
+
+
+
+# Apply Globals ################################################################
+
+PRINT.PRINT_ERRORS = PRINT_ERRORS
+PRINT.PRINT_PROGRESS = PRINT_PROGRESS
+PRINT.PRINT_METRICS = PRINT_METRICS
+
+
+
+# Functions ####################################################################
+
+def Generate_Fragments(path_in, path_out, depth_settings, read_len,
+            frag_settings, method_settings):
+    """
+    Generate a series of DNA fragments from the DNA templates in a folder of
+    FASTA files.
+    
+    @path_in
+            (str - dirpath)
+            The filepath of the folder containing the FASTA file(s) containing
+            the original DNA templates which the fragments are based on.
+    @path_out
+            (str - dirpath)
+            The file to which the output is written.
+    @depth_settings
+            ([int, int, float])
+            The "depth of coverage" settings.
+            A list containing the following three variables:
+                1)  (int)
+                    The average depth of coverage for the DNA templates by the
+                    reads which will be generated using the fragments.
+                2)  (int) - Pseudo ENUM
+                    An int which signifies which statistical distribution to
+                    use when determining the likelihood of a fragment (and thus
+                    coverage) being generated at any particular location:
+                        0: Normal distribution
+                        1: Gamma distribution
+                        2: Uniform distribution
+                3)  (float)
+                    The paramter variable to use for the statistical
+                    distribution specified by the second variable in this list.
+                    Its meaning will vary depending on the distribution:
+                        NORMAL DISTRIBUTION:
+                            This variable is the standard deviation.
+                        GAMMA DISTRIBUTION:
+                            This variable is the alpha value of the
+                            distribution. The beta value is automatically
+                            calculated such at A*B=1. If a negative value is
+                            provided, the distribution used will change to a
+                            flip-shifted gamma distribution.
+                        UNIFORM DISTRIBUTION:
+                            This variable is the difference between the mean of
+                            the distribution, and either the upper or lower
+                            limits of the distribution range.
+    @read_len
+            (int)
+            The intended total length of the reads which will be generated by
+            the fragments. If 0 or -1, this will indicate that the fragments
+            will be sequenced in their entirety without overlapping reads.
+    @frag_settings
+            ([int, int, float])
+            The "fragment length" settings.
+            A list containing the following three variables:
+                1)  (int)
+                    The average length of the fragments to be generated.
+                2)  (int) - Pseudo ENUM
+                    An int which signifies which statistical distribution to
+                    use when determining the length of a fragment when one is
+                    generated:
+                        0: Normal distribution
+                        1: Gamma distribution
+                        2: Uniform distribution
+                3)  (float)
+                    The paramter variable to use for the statistical
+                    distribution specified by the second variable in this list.
+                    Its meaning will vary depending on the distribution:
+                        NORMAL DISTRIBUTION:
+                            This variable is the standard deviation.
+                        GAMMA DISTRIBUTION:
+                            This variable is the alpha value of the
+                            distribution. The beta value is automatically
+                            calculated such at A*B=1. If a negative value is
+                            provided, the distribution used will change to a
+                            flip-shifted gamma distribution.
+                        UNIFORM DISTRIBUTION:
+                            This variable is the difference between the mean of
+                            the distribution, and either the upper or lower
+                            limits of the distribution range.
+    @method_settings
+            ([int, *...])
+            The "depth of coverage" settings.
+            A list of variables containing all settings relevant to determining
+            where fragments can start and end. The first variable is as follows:
+                (int) - Pseudo ENUM
+                An int which signifies where fragments can start and end. 
+                    0: All
+            What other variables are required depend on the first integer:
+                ALL:
+                    No other variables are necessary.
+    
+    Return a value of 0 if the function runs successfully.
+    Return a value of 1 if there is a problem accessing the data or if there are
+            no valid FASTA files in the input folder.
+    Return a value of 2 if there is a problem with the output file.
+    Return a value of 3 if there is a problem during the fragment generation
+            process.
+    
+    Generate_Fragments(str, str, [int, int, float], int, [int, int, float],
+            [int, *...]) -> int
+    """
+    # Setup reporting
+    outcomes = [] # Outcomes are added after each input file is processed
+    
+    # Setup the I/O
+    paths_in = Get_FASTA_List(path_in)
+    if paths_in: return 1
+    try:
+        o = open(path_out, "w")
+    except:
+        return 2
+    
+    # Main loop
+    PRINT.printP(STR__GenFrags_begin)
+    for path in paths_in:
+        outcome = Generate_Fragments_FILE(path, o, depth_settings,
+                read_len, frag_settings, method_settings):
+        if outcome: outcomes.append(outcome)
+        else:
+            o.close()
+            return 3
+    
+    # Finish up
+    o.close()
+
+    # Reporting
+    Report_Metrics(outcomes)
+
+    # Wrap up
+    return 0
+
+def Get_FASTA_List(path_in):
+    """
+    """
+    results = []
+    return results
+
+def Report_Metrics(outcomes):
+    """
+    """
+    pass
 
 """
 NOTES: (Delete later)
