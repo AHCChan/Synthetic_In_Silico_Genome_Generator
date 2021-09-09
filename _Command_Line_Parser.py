@@ -32,6 +32,9 @@ STR__insufficient_inputs = "\nERROR: Not enough inputs were given."
 STR__IO_error_read = "\nERROR: Input file does not exist or could not be "\
         "opened."
 
+STR__IO_error_read_folder = "\nERROR: Input folder does not exist or could not"\
+        " be read."
+
 STR__IO_error_write_folder_nonexistent = """
 ERROR: You specified an output folder which does not exist and cannot be
 created. Please specify a different output folder."""
@@ -66,8 +69,12 @@ STR__parsing_args = "\nParsing arguments..."
 
 # Lists ########################################################################
 
+LIST__help = ["-h", "-H", "-help", "-Help", "-HELP"]
+
 LIST__yes = ["Y", "y", "YES", "Yes", "yes", "T", "t", "TRUE", "True", "true"]
 LIST__no = ["N", "n", "NO", "No", "no", "F", "f", "FALSE", "False", "false"]
+
+LIST__all = ["A", "a", "ALL", "All", "all"]
 
 LIST__FASTA = ["FA", "fa", "FASTA", "Fasta", "fasta"] # File extension
 
@@ -147,6 +154,20 @@ def Validate_Read_Path(filepath):
     except:
         return 1
 
+def Validate_Read_Folder(dirpath):
+    """
+    Validates the dirpath of the folder.
+    Return 0 if the filepath is valid.
+    Return 1 otherwise.
+    
+    Validate_Read_Path(str) -> int
+    """
+    try:
+        os.listdir(dirpath)
+        return 0
+    except:
+        return 1
+
 
 
 def Generate_Default_Output_Folder_Path(path_in):
@@ -158,6 +179,16 @@ def Generate_Default_Output_Folder_Path(path_in):
     index = Find_Period_Index(path_in)
     if index == -1: return path_in
     else: return path_in[:index]
+    
+def Generate_Default_Output_File_Path_From_Folder(path_in, mod):
+    """
+    Generate output filepath based on the provided input dirpaths.
+    
+    Assumes [path_in] is a valid dirpath.
+
+    Generate_Default_Output_File_Path_From_Folder(str) -> str
+    """
+    return path_in + mod
 
 def Find_Period_Index(filepath):
     """
@@ -233,7 +264,7 @@ def Validate_Int_Positive(string):
         (str)
         A string denoting a positive integer.
         
-    Validate_Column_Number(str) -> int
+    Validate_Int_Positive(str) -> int
     """
     try:
         n = int(string)
@@ -241,6 +272,80 @@ def Validate_Int_Positive(string):
         return -1
     if n < 1: return -1
     return n
+
+def Validate_Int_NonNeg(string):
+    """
+    Validates and returns the non-negative integer specified.
+    Return -1 if the input is invalid.
+    
+    @string
+        (str)
+        A string denoting a non-negative integer.
+        
+    Validate_Int_NonNeg(str) -> int
+    """
+    try:
+        n = int(string)
+    except:
+        return -1
+    if n < 0: return -1
+    return n
+
+def Validate_Float_Positive(string):
+    """
+    Validates and returns the positive float specified.
+    Return -1 if the input is invalid.
+    
+    @string
+        (str)
+        A string denoting a positive float.
+        
+    Validate_Float_Positive(str) -> float
+    """
+    try:
+        n = float(string)
+    except:
+        return -1
+    if n <= 0: return -1
+    return n
+
+def Validate_Float_NonNeg(string):
+    """
+    Validates and returns the non-negative float specified.
+    Return -1 if the input is invalid.
+    
+    @string
+        (str)
+        A string denoting a non-negative float.
+        
+    Validate_Float_NonNeg(str) -> float
+    """
+    try:
+        n = float(string)
+    except:
+        return -1
+    if n < 0: return -1
+    return n
+
+def Validate_Float_NonZero(string):
+    """
+    Validates and returns the non-zero float specified.
+    Return -1 if the input is invalid.
+    
+    @string
+        (str)
+        A string denoting a non-zero float.
+        
+    Validate_Float_NonZero(str) -> float
+    """
+    try:
+        n = float(string)
+    except:
+        return -1
+    if n == 0: return -1
+    return n
+
+
 
 
 

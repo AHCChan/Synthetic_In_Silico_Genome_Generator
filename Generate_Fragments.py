@@ -271,7 +271,7 @@ PRINT_METRICS = True
 
 # Minor Configurations #########################################################
 
-FILEMOD__FASTA = ".fa"
+FILEMOD__FASTA = "__FRAGMENTS.fa"
 
 # For name string
 ID_SIZE = 15
@@ -287,11 +287,11 @@ STR__reverse = "R"
 DEFAULT__depth = 10
 DEFAULT__read_len = -1
 DEFAULT__frag_len = 500
-DEFAULT__cov_dist = 1 # DIST.GAMMA = 1. Alter this if the DIST enum is altered
+DEFAULT__cov_dist = 2 # DIST.GAMMA = 2. Alter this if the DIST enum is altered
 DEFAULT__cov_num = 1
-DEFAULT__frag_dist = 0 # DIST.NORMAL = 0. Alter this if the DIST enum is altered
+DEFAULT__frag_dist = 1 # DIST.NORMAL = 1. Alter this if the DIST enum is altered
 DEFAULT__frag_num = 50
-DEFAULT__method = 0
+DEFAULT__method = 1
 
 
 
@@ -315,12 +315,12 @@ from Chr_FASTA_File_Reader import *
 # Enums ########################################################################
 
 class DIST: # For Distribution
-    NORMAL=0 # If this is changed, sync relevant defaults
-    GAMMA=1
-    UNIFORM=2
+    NORMAL=1 # If this is changed, sync relevant defaults
+    GAMMA=2
+    UNIFORM=3
 
 class METHOD:
-    ALL=0
+    ALL=1
 
 
 
@@ -329,14 +329,73 @@ class METHOD:
 STR__use_help = "\nUse the -h option for help:\n\t python "\
 "Generate_Fragments.py -h"
 
-
+STR__error_no_FASTA = """
+ERROR: No FASTA files detected in:
+    {f}"""
 
 STR__invalid_dist = """
-ERROR: Invalid statistical distirbution: {s}
+ERROR: Invalid statistical distribution: {s}
 Please specify one of:
     NORMAL
     GAMMA
     UNIFORM"""
+
+STR__invalid_depth = """
+ERROR: Invalid depth of coverage: {s}
+Please specify a positive number."""
+
+STR__invalid_cov_param = """
+ERROR: Invalid nucleotide coverage parameters:
+    (Distribution): {d}
+    (Parameter):    {p}
+
+For the distribution model, please specify one of:
+    NORMAL
+    GAMMA
+    UNIFORM
+
+For the parameter, depending on the distribution model chosen, please specify:
+    NORMAL - A non-negative number.
+    GAMMA - A non-zero number.
+    UNIFORM - (Unnecessary)"""
+
+STR__invalid_frag_param = """
+ERROR: Invalid fragment length parameters:
+    (Distribution): {d}
+    (Parameter):    {p}
+
+For the distribution model, please specify one of:
+    NORMAL
+    GAMMA
+    UNIFORM
+
+For the parameter, depending on the distribution model chosen, please specify:
+    NORMAL - A non-negative number.
+    GAMMA - A non-zero number.
+    UNIFORM - A non-negative integer."""
+
+STR__invalid_read_len = """
+ERROR: Invalid read length: {s}
+Please specify a positive integer."""
+
+STR__invalid_frag_len = """
+ERROR: Invalid fragment length: {s}
+Please specify a positive integer."""
+
+STR__invalid_method = """
+ERROR: Invalid fragmentation method: {s}
+Please specify one of:
+    ALL
+    (other options currently not implemented)"""
+
+
+
+STR__input_invalid = "\nERROR: An unexpected error occured when reading from "\
+        "the input file(s)."
+STR__output_invalid = "\nERROR: An unexpected error occured when writing to "\
+        "the output file."
+STR__generation_invalid = "\nERROR: An unexpected error occured during the "\
+        "fragment generation process."
 
 
 
@@ -371,8 +430,6 @@ LIST__normal = ["N", "n", "NORMAL", "Normal", "normal", "NORM", "Norm", "norm"]
 LIST__gamma = ["G", "g", "GAMMA", "Gamma", "gamma"]
 LIST__uniform = ["U", "u", "UNIFORM", "Uniform", "uniform", "UNI", "Uni", "uni"]
 
-LIST__all = ["A", "a", "ALL", "All", "all"]
-
 
 
 # Dictionaries #################################################################
@@ -381,6 +438,9 @@ DICT__dists = {}
 for i in LIST__normal: DICT__dists[i] = DIST.NORMAL
 for i in LIST__gamma: DICT__dists[i] = DIST.GAMMA
 for i in LIST__uniform: DICT__dists[i] = DIST.UNIFORM
+
+DICT__methods = {}
+for i in LIST__all: DICT__methods[i] = METHOD.ALL
 
 
 
@@ -577,6 +637,11 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
         prob = depth / bases_per_frag
         prob = prob / 2 # For both forward and reverse
     
+    # Calculations (maximum length)
+    if frag_len_method == DIST.NORMAL: max_len = 5 * frag_len
+    if frag_len_method == DIST.GAMMA: max_len = 5 * frag_len
+    if frag_len_method == DIST.UNIFORM: max_len = 5 * frag_len + frag_len_param
+    
     # Calculate (distribution parameters)
     if depth_method == DIST.GAMMA:
         if depth_param < 0:
@@ -589,7 +654,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
     elif depth_method == DIST.UNIFORM:
         depth_param = 0
         while prob > 1:
-            depth_param = += 1
+            depth_param += 1
             prob -= 1
     
     if frag_len_method == DIST.GAMMA:
@@ -605,11 +670,6 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
         upper = frag_len + frag_len_param
         frag_len_param = range(lower, upper+1)
         frag_len = 0
-    
-    # Calculations (maximum length)
-    if frag_len_method == DIST.NORMAL: max_len = 5 * frag_len
-    if frag_len_method == DIST.GAMMA: max_len = 5 * frag_len
-    if frag_len_method == DIST.UNIFORM: max_len = 5 * frag_len + frag_len_param
     
     # I/O setup
     f = Chr_FASTA_Reader(path_in, True)
@@ -788,5 +848,252 @@ def Generate_Frag_Name(counter, start, direction, end):
     sb = Pad_Str(str(counter), ID_SIZE, "0", 0)
     sb = sb + "__" + str(start) + "_" + direction + "_" + str(end)
     return sb
+
+
+
+# Command Line Parsing #########################################################
+
+def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
+    """
+    Parse the command line input and call the Generate_Fragments function
+    with appropriate arguments if the command line input is valid.
+    """
+    PRINT.printP(STR__parsing_args)
+    # Remove the runtime environment variable and program name from the inputs
+    inputs = Strip_Non_Inputs(raw_command_line_input, NAME)
+    
+    # No inputs
+    if not inputs:
+        PRINT.printE(STR__no_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Help option
+    if inputs[0] in LIST__help:
+        print(HELP_DOC)
+        return 0
+    
+    # Initial validation (Redundant in current version)
+    if len(inputs) < 1:
+        PRINT.printE(STR__insufficient_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Validate mandatroy inputs
+    path_in = inputs.pop(0)
+    valid = Validate_FASTA_Folder(path_in)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    elif valid == 2:
+        PRINT.printE(STR__error_no_FASTA.format(f = path_in))
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Set up rest of the parsing
+    path_out = Generate_Default_Output_File_Path_From_Folder(path_in,
+            FILEMOD__FASTA)
+    read_len = DEFAULT__read_len
+    depth = DEFAULT__depth
+    cov_dist = DEFAULT__cov_dist
+    cov_num = DEFAULT__cov_num
+    frag_len = DEFAULT__frag_len
+    frag_dist = DEFAULT__frag_dist
+    frag_num = DEFAULT__frag_num
+    method = DEFAULT__method
+    
+    # Validate optional inputs (except output path)
+    while inputs:
+        arg = inputs.pop(0)
+        try: # Second argument
+            arg2 = inputs.pop(0)
+        except:
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
+            return 1
+        if arg == "-o": # Output files
+            path_out = arg2
+        elif arg == "-d": # Depth of coverage
+            depth = arg2
+            depth = Validate_Float_Positive(arg2)
+            if depth == 0:
+                PRINT.printE(STR__invalid_depth.format(s = arg2))
+                return 1
+        elif arg == "-c": # Coverage parameters
+            try: # Third argument
+                arg3 = inputs.pop(0)
+            except:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+            cov_params = Validate_Dist_Params(arg2, arg3)
+            if not cov_params:
+                PRINT.printE(STR__invalid_cov_param.format(d = arg2, p = arg3))
+                return 1
+            cov_dist, cov_num = cov_params
+        elif arg == "-r": # Read length
+            if read_len == "-1": read_len = -1
+            else:
+                read_len = Validate_Int_Positive(arg2)
+                if read_len == -1:
+                    PRINT.printE(STR__invalid_read_len.format(s = arg2))
+                    return 1
+        elif arg == "-l": # Fragment length
+            frag_len = Validate_Int_Positive(arg2)
+            if frag_len == -1:
+                PRINT.printE(STR__invalid_frag_len.format(s = arg2))
+                return 1
+        elif arg == "-f": # Fragment parameters
+            try: # Third argument
+                arg3 = inputs.pop(0)
+            except:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+            frag_params = Validate_Dist_Params(arg2, arg3)
+            if not frag_params:
+                PRINT.printE(STR__invalid_frag_param.format(d = arg2, p = arg3))
+                return 1
+            frag_dist, frag_num = frag_params
+        elif arg == "-m": # Method
+            method = DICT__methods.get(arg2, None)
+            if not method:
+                PRINT.printE(STR__invalid_method.format(s = arg))
+                return 1
+        else: # Invalid
+            arg = Strip_X(arg)
+            PRINT.printE(STR__invalid_argument.format(s = arg))
+            PRINT.printE(STR__use_help)
+            return 1
+    
+    # Processing
+    if read_len == -1: read_len = frag_len
+    
+    # Validate output path
+    valid_out = Validate_Write_Path(path_out)
+    if valid_out == 2: return 0
+    if valid_out == 3:
+        printE(STR__IO_error_write_forbid)
+        return 1
+    if valid_out == 4:
+        printE(STR__In_error_write_unable)
+        return 1
+    
+    # Run program
+    exit_state = Generate_Fragments(path_in, path_out, [depth, cov_dist,
+            cov_num], read_len, [frag_len, frag_dist, frag_num], [method])
+    
+    # Exit
+    if exit_state == 0: return 0
+    else:
+        if exit_state == 1: PRINT.printE(STR__input_invalid)
+        if exit_state == 2: PRINT.printE(STR__output_invalid)
+        if exit_state == 3: PRINT.printE(STR__generation_invalid)
+        PRINT.printE(STR__use_help)
+        return 1
+
+def Validate_Dist_Params(method, param):
+    """
+    Validates the statistical distribution parameters; [method] needs to be text
+    indicating a valid distribution, and [param] needs to specify valid
+    parameters for said distribution, and will depend on [method].
+    
+    Return a list containing a pseudo-enum int and a second variable if the
+    parameters are valid.
+    Return an empty list if the parameters are invalid.
+    
+    Valid values for [method] include "Normal", "Gamma", and "Uniform", and all
+    capitalization variants of these strings.
+    
+    Regarding param:
+        
+        For a normal distribtions, [param] is the standard deviation, a
+        non-negative number.
+        
+        For a gamma distribution, [param] is the ratio between alpha and beta.
+        The greater it's value, the greater the ratio between the alpha and beta
+        values, and the more skwewed the data becomes. For negative [param]
+        values, the distribution is flip-shifted.
+        
+        For a uniform distribution, [param] is how far away from the average the
+        distribution range goes.
+    
+    Validate_Dist_Params(str, str) -> list<*>
+    """
+    dist = DICT__dists.get(method, 0)
+    if dist == 1: # Normal
+        param = Validate_Float_NonNeg(param)
+        if param == -1: return []
+    elif dist == 2: # Gamma
+        param = Validate_Float_NonZero(param)
+        if param == -1: return []
+    elif dist == 3: # Uniform
+        param = Validate_Int_NonNeg(param)
+        if param == -1: return []
+    else:
+        return []
+    return [dist, param]
+
+def Validate_Write_Path(filepath):
+    """
+    Validates the filepath of the output file.
+    Return 0 if the filepath is writtable.
+    Return 1 if the user decides to overwrite an existing file.
+    Return 2 if the user declines to overwrite an existing file.
+    Return 3 if the file exists and the program is set to forbid overwriting.
+    Return 4 if the program is unable to write to the filepath specified.
+    
+    Validate_Write_Path(str) -> int
+    """
+    try:
+        f = open(filepath, "U")
+        f.close()
+    except: # File does not exist. 
+        try:
+            f = open(filepath, "w")
+            f.close()
+            return 0 # File does not exist and it is possible to write
+        except:
+            return 4 # File does not exist but it is not possible to write
+    # File exists
+    if WRITE_PREVENT: return 3
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm.format(f = filepath))
+        if confirm not in LIST__yes: return 2
+    # User is not prevented from overwritting and may have chosen to overwrite
+    try:
+        f = open(filepath, "w")
+        f.close()
+        if WRITE_CONFIRM: return 1 # User has chosen to overwrite existing file
+        return 0 # Overwriting existing file is possible
+    except:
+        return 4 # Unable to write to specified filepath
+    
+    
+
+def Validate_FASTA_Folder(dirpath):
+    """
+    Validates the dirpath of the input file as containing FASTA files.
+    Return 0 if the dirpath is valid and contains at least 1 FASTA file.
+    Return 1 if the dirpath is valid but contains no FASTA files.
+    Return 2 if the dirpath is invalid.
+    
+    Validate_Read_Path(str) -> int
+    """
+    try:
+        os.listdir(dirpath)
+        files = Get_Files_W_Extensions(dirpath, LIST__FASTA)
+        if len(files) > 0: return 0
+        return 1
+    except:
+        return 2    
+
+
+
+# Main Loop ####################################################################
+
+if AUTORUN and (__name__ == "__main__"):
+    exit_code = Parse_Command_Line_Input__Generate_Fragments(sys.argv)
 
 

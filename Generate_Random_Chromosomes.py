@@ -192,8 +192,6 @@ STR__GSC_complete = "\nGenerate_Random_Chromosomes successfully finished."
 
 # Lists ########################################################################
 
-LIST__help = ["-h", "-H", "-help", "-Help", "-HELP"]
-
 LIST__yes = ["Y", "y", "YES", "Yes", "yes", "T", "t", "TRUE", "True", "true"]
 LIST__no = ["N", "n", "NO", "No", "no", "F", "f", "FALSE", "False", "false"]
 
@@ -505,18 +503,18 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
     PRINT.printP(STR__parsing_args)
     # Remove the runtime environment variable and program name from the inputs
     inputs = Strip_Non_Inputs(raw_command_line_input, NAME)
-
+    
     # No inputs
     if not inputs:
         PRINT.printE(STR__no_inputs)
         PRINT.printE(STR__use_help)
         return 1
-  
+    
     # Help option
     if inputs[0] in LIST__help:
         print(HELP_DOC)
         return 0
-
+    
     # Initial validation (Redundant in current version)
     if len(inputs) < 1:
         PRINT.printE(STR__insufficient_inputs)
@@ -549,7 +547,7 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
         if arg == "-o": # Output files
             path_out = arg2
         elif arg == "-w": # File width
-            width = PARSE.Validate_Int_Positive(arg2)
+            width = Validate_Int_Positive(arg2)
             if width == -1:
                 PRINT.printE(STR__invalid_width.format(s = arg2))
                 return 1
@@ -627,7 +625,7 @@ def Validate_Folder_Path(folder_path, chr_sizes_filepath):
     * Empty - Not necessarily empty, but does not containing any naming
             conflicts with the names in the chromosome sizes file.
     
-    Validate_Write_Path(str) -> int
+    Validate_Folder_Path(str, str) -> int
     """
     # Create folder if it does not exist
     if not os.path.isdir(folder_path):
