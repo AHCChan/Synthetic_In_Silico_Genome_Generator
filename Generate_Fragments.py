@@ -434,6 +434,7 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
                             value is provided, the distribution used will change
                             to a flip-shifted gamma distribution.
                         UNIFORM DISTRIBUTION:
+                            (Only relevant for fragment lenth settings)
                             This variable is the difference between the mean of
                             the distribution, and either the upper or lower
                             limits of the distribution range.
@@ -586,9 +587,10 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
         alpha = prob / beta
         depth_param = [alpha, beta, flag]
     elif depth_method == DIST.UNIFORM:
-        lower = depth - depth_param
-        upper = depth + depth_param
-        depth_param = range(lower, upper+1)
+        depth_param = 0
+        while prob > 1:
+            depth_param = += 1
+            prob -= 1
     
     if frag_len_method == DIST.GAMMA:
         if frag_len_param < 0:
@@ -602,6 +604,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
         lower = frag_len - frag_len_param
         upper = frag_len + frag_len_param
         frag_len_param = range(lower, upper+1)
+        frag_len = 0
     
     # Calculations (maximum length)
     if frag_len_method == DIST.NORMAL: max_len = 5 * frag_len
@@ -717,10 +720,55 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
     """
     Generate a random number.
     
-    The distribution of the amortized 
+    The distribution of the amortized results of this function being run,
+    multiple times, with the same parameters, will be equal to [mean], or
+    [mean]+[param] in the case of certain uniform distributions.
+
+    MAJORLY DIFFERING SPECIAL BEHAVIOUR:
+    If [mean] is 0 and the normal distribution method is chosen, one of the
+    values in [param] will be chosen at random
+    
+    @mean
+            (int/float)
+            The desired average outcome.
+            In the case where a Uniform distribution is chosen and @mean is not
+            0, then the average outcome of this function with the same
+            parameters will be (@mean+@param)
+    @method
+            (int) - Pseudo ENUM
+            An integer signifying which probability distribution to use:
+                0: Normal distribution
+                1: Gamma distribution
+                2: Uniform distribution
+    @param
+            (*)
+            Varies depending on the distribution method chosen:
+                NORMAL DISTIRBUTION:
+                    (float)
+                    The standard deviation of the normal distribution.
+                GAMMA DISTRIBUTION:
+                    ([float, float, bool])
+                    A list containing the Alpha and Beta to be used for the
+                    Gamma distribution, and a flag indicating whether to
+                    flip-shift the result or not.
+                UNIFORM:
+                    (list/int)
+                    If @mean is 0, then @param is a list of values, one of which
+                    will be chosen at random with equal probability.
+                    If @mean is not zero, then @param is the number to add
+    @must_positive
+            (bool)
+            Whether or not to forcibly make
+    
+    Custom_Random_Distribution(int/float, int, *, bool) -> int/float
     """
     if method == DIST.UNIFORM:
-        r = Random.choice(param)
+        if mean:
+            r = Random.random()
+            if r > mean: return param+1
+            else: return param
+        else:
+            r = Random.choice(param)
     else:
         if method == DIST.NORMAL:
             r = Random.normalvariate(mean, param)
