@@ -69,6 +69,8 @@ STR__parsing_args = "\nParsing arguments..."
 LIST__yes = ["Y", "y", "YES", "Yes", "yes", "T", "t", "TRUE", "True", "true"]
 LIST__no = ["N", "n", "NO", "No", "no", "F", "f", "FALSE", "False", "false"]
 
+LIST__FASTA = ["FA", "fa", "FASTA", "Fasta", "fasta"] # File extension
+
 
 
 # Dictionaries #################################################################
@@ -192,6 +194,34 @@ def Get_Extension(filepath):
     index_period = Find_Period_Index(filepath)
     if index_period == -1: return ""
     return filepath[index_period+1:]
+
+def Get_Files_W_Extensions(dirpath, extensions):
+    """
+    Return a list of the full filepaths of every file in [dirpath] which have
+    a file extension in [extensions].
+    Return an empty list if there are any issues.
+    
+    @path_in
+            (str - dirpath)
+            The filepath of the folder of interest.
+    @extensions
+            (list<str>)
+            A list of all acceptable file extensions.
+    
+    Get_FASTA_List(str) -> list<str>
+    """
+    results = []
+    try:
+        files = os.listdir(dirpath)
+    except:
+        return results
+    for file_ in files:
+        extension = Get_Extension(file_)
+        if extension in extensions:
+            full_path = dirpath + "/" + file_
+            results.append(full_path)
+    return results
+
 
 
 def Validate_Int_Positive(string):

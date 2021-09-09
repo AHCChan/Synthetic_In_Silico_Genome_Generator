@@ -47,9 +47,9 @@ The formula is as follows:
 USAGE:
     
     python27 Generate_Fragments.py <input_folder> [-o <output_filepath] [-d
-            <depth_of_coverage>] [-c N|G|U <stdev>|<alpha>|<max_dist>] [-r
+            <depth_of_coverage>] [-c N|G|U <stdev>|<alpha_mod>|<max_dist>] [-r
             <read_length>] [-l <avg_frag_len>] [-f N|G|U
-            <stdev>|<alpha>|<max_dist>] [-m <method> [method_sup]...]
+            <stdev>|<alpha_mod>|<max_dist>] [-m <method> [method_sup]...]
 
 
 
@@ -77,6 +77,9 @@ OPTIONAL:
         read length is specified, or if a read length of -1 is specified, then
         it is assumed that each fragment is sequenced completely, without
         overlap.
+        
+        If a gamma distribution is used, the actual resulting depth of coverage
+        will be lower than this.
     
     read_length
         
@@ -109,15 +112,25 @@ OPTIONAL:
         
         The standard deviation of the normal distribution.
     
-    alpha
+    alpha_mod
         
         (Only applies if a Gamma Variate distribution was specified)
         (DEFAULT: 1)
         
-        The standard Alpha of the Gamma distribution function. The Beta value is
-        automatically calculated, such that ALPHA*BETA = 1. (To ensure that the
-        resulting average coverage or average fragment length is what was
-        specified is the one which by the user.)
+        The skewness factor of the Gamma distribution.
+        
+        The magnitude of @alpha_mod determines how unskewed the distribution is.
+        As @alpha_mod approaches infinity, the resulting gamma distribution will
+        begin to resemble a normal distribution. As @alpha approaches 0, the
+        resulting gamma distribution will become increasingly skewed.
+        
+        It is known that, for a Gamma Distribution:
+            
+            Alpha * Beta ~= Desired_Average
+        
+        The Beta is automatically calculated such that:
+            
+            Alpha = Beta * Alpha_Mod
         
         A gamma variate distribution is right-tailed, with most values
         clustered to the left of the mean.
@@ -127,11 +140,6 @@ OPTIONAL:
         clusterd to the right of the mean. Please note that this is an
         unorthodox method. A better method should be implemented and used if
         users need a high fidelity left-tailed distribution.
-        
-        The magnitude of @alpha determines how unskewed the distribution is. As
-        @alpha approaches infinity, the resulting gamma distribution will begin
-        to resemble a normal distribution. As @alpha approaches 0, the resulting
-        gamma distribution will become increasingly skewed.
         
     max_dist
         
@@ -239,9 +247,9 @@ EXAMPLES:
 USAGE:
     
     python27 Generate_Fragments.py <input_folder> [-o <output_filepath] [-d
-            <depth_of_coverage>] [-c N|G|U <stdev>|<alpha>|<max_dist>] [-r
+            <depth_of_coverage>] [-c N|G|U <stdev>|<alpha_mod>|<max_dist>] [-r
             <read_length>] [-l <avg_frag_len>] [-f N|G|U
-            <stdev>|<alpha>|<max_dist>] [-m <method> [method_sup]...]
+            <stdev>|<alpha_mod>|<max_dist>] [-m <method> [method_sup]...]
 """
 
 NAME = "Generate_Fragments.py"
@@ -264,6 +272,12 @@ PRINT_METRICS = True
 # Minor Configurations #########################################################
 
 FILEMOD__FASTA = ".fa"
+
+# For name string
+ID_SIZE = 15
+STR__forward = "F"
+STR__reverse = "R"
+
 
 
 
@@ -291,6 +305,7 @@ import random as Random
 
 
 import _Controlled_Print as PRINT
+import NSeq_Match as N_SEQ
 from _Command_Line_Parser import *
 
 from Chr_FASTA_File_Reader import *
@@ -324,6 +339,10 @@ Please specify one of:
     UNIFORM"""
 
 
+
+STR__metrics = """
+Total fragments generated: {C}
+Average fragment size:     {A}"""
 
 STR__GenFrags_begin = "\nRunning Generate_Random_Chromosomes..."
 
@@ -409,11 +428,11 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
                         NORMAL DISTRIBUTION:
                             This variable is the standard deviation.
                         GAMMA DISTRIBUTION:
-                            This variable is the alpha value of the
+                            This variable is the alpha modifier of the
                             distribution. The beta value is automatically
-                            calculated such at A*B=1. If a negative value is
-                            provided, the distribution used will change to a
-                            flip-shifted gamma distribution.
+                            calculated such at A*B=Average_Depth. If a negative
+                            value is provided, the distribution used will change
+                            to a flip-shifted gamma distribution.
                         UNIFORM DISTRIBUTION:
                             This variable is the difference between the mean of
                             the distribution, and either the upper or lower
@@ -454,7 +473,7 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
                             limits of the distribution range.
     @method_settings
             ([int, *...])
-            The "depth of coverage" settings.
+            The "method for determining fragment starts and ends" settings.
             A list of variables containing all settings relevant to determining
             where fragments can start and end. The first variable is as follows:
                 (int) - Pseudo ENUM
@@ -476,69 +495,250 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
     """
     # Setup reporting
     outcomes = [] # Outcomes are added after each input file is processed
-    
     # Setup the I/O
-    paths_in = Get_FASTA_List(path_in)
-    if paths_in: return 1
+    paths_in = Get_Files_W_Extensions(path_in, LIST__FASTA)
+    if not paths_in: return 1
     try:
         o = open(path_out, "w")
     except:
         return 2
-    
     # Main loop
     PRINT.printP(STR__GenFrags_begin)
     for path in paths_in:
-        outcome = Generate_Fragments_FILE(path, o, depth_settings,
-                read_len, frag_settings, method_settings):
+        outcome = Generate_Fragments__FILE(path, o, depth_settings,
+                read_len, frag_settings, method_settings)
         if outcome: outcomes.append(outcome)
         else:
             o.close()
             return 3
-    
     # Finish up
     o.close()
-
+    PRINT.printP(STR__GenFrags_complete)
     # Reporting
     Report_Metrics(outcomes)
-
     # Wrap up
     return 0
 
-def Get_FASTA_List(path_in):
+def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
+            frag_settings, method_settings):
     """
+    Generate a series of DNA fragments from the DNA template in the input file
+    specified by [path_in].
+    
+    The per-input-file version of the Generate_Fragments() function.
+    
+    @path_in
+            (str - dirpath)
+            The filepath of the input file.
+    @path_out
+            (str - dirpath) OR
+            (file)
+            The filepath of the file to which the output is written, OR the file
+            itself as a file object.
+    @depth_settings
+            ([int, int, float])
+            The "depth of coverage" settings.
+            See Generate_Fragments() documentation for details.
+    @read_len
+            (int)
+            The intended total length of the reads which will be generated by
+            the fragments. If 0 or -1, this will indicate that the fragments
+            will be sequenced in their entirety without overlapping reads.
+    @frag_settings
+            ([int, int, float])
+            The "fragment length" settings.
+            See Generate_Fragments() documentation for details.
+    @method_settings
+            ([int, *...])
+            The "method for determining fragment starts and ends" settings.
+            See Generate_Fragments() documentation for details.
+    
+    Return a list containing the number of number of fragments generated and
+    their total length.
+    Return an empty list if an error occured.
+    
+    Generate_Fragments(str, str/file, [int, int, float], int, [int, int, float],
+            [int, *...]) -> [int, int]
     """
-    results = []
-    return results
+    # Metrics setup
+    count = 0
+    total = 0
+    
+    # Unpack
+    depth, depth_method, depth_param = depth_settings
+    frag_len, frag_len_method, frag_len_param = frag_settings
+    method = method_settings[0]
+    
+    # Calculations (utilization and probabilities)
+    utilization = float(read_len)/frag_len
+    bases_per_frag = frag_len * utilization
+    if method == METHOD.ALL:
+        prob = depth / bases_per_frag
+        prob = prob / 2 # For both forward and reverse
+    
+    # Calculate (distribution parameters)
+    if depth_method == DIST.GAMMA:
+        if depth_param < 0:
+            flag = True
+            depth_param = -depth_param
+        else: flag = False
+        beta = (prob / depth_param) ** 0.5
+        alpha = prob / beta
+        depth_param = [alpha, beta, flag]
+    elif depth_method == DIST.UNIFORM:
+        lower = depth - depth_param
+        upper = depth + depth_param
+        depth_param = range(lower, upper+1)
+    
+    if frag_len_method == DIST.GAMMA:
+        if frag_len_param < 0:
+            flag = True
+            frag_len_param = -frag_len_param
+        else: flag = False
+        beta = (frag_len / frag_len_param) ** 0.5
+        alpha = frag_len / beta
+        frag_len_param = [alpha, beta, flag]
+    elif frag_len_method == DIST.UNIFORM:
+        lower = frag_len - frag_len_param
+        upper = frag_len + frag_len_param
+        frag_len_param = range(lower, upper+1)
+    
+    # Calculations (maximum length)
+    if frag_len_method == DIST.NORMAL: max_len = 5 * frag_len
+    if frag_len_method == DIST.GAMMA: max_len = 5 * frag_len
+    if frag_len_method == DIST.UNIFORM: max_len = 5 * frag_len + frag_len_param
+    
+    # I/O setup
+    f = Chr_FASTA_Reader(path_in, True)
+    if type(output) == str: o = open(output, "w")
+    else: o = output
+    
+    # Setup
+    current_index = 0
+    counter = 0
+    previous = []
+    len_previous = 0
+    unfinished_frags = [] # [goal, current, seq, name]
+    
+    # Main Loop
+    while not f.End():
+        f.Read()
+        
+        current_index += 1
+        
+        n = f.Get_Current()
+        n_ = N_SEQ.Get_Complement(n)
+        
+        previous.append(n_)
+        if len(previous) > max_len: previous.pop(0)
+        else: len_previous += 1
+        
+        # Unfinished forward frags
+        for list_ in unfinished_frags:
+            list_[1] += 1
+            list_[2] += n
+            if list_[0] == list_[1]:
+                count += 1
+                total += list_[0]
+                s = ">" + list_[3] + "\n" + list_[2] + "\n"
+                o.write(s)
+        for list_ in unfinished_frags:
+            if list_[0] == list_[1]: unfinished_frags.remove(list_)
+        
+        # Calculate numbers
+        forwards = Custom_Random_Distribution(prob, depth_method, depth_param)
+        backwards = Custom_Random_Distribution(prob, depth_method, depth_param)
+        
+        # Individual frags
+        while forwards > 0:
+            counter += 1
+            length = Custom_Random_Distribution(frag_len, frag_len_method,
+                    frag_len_param)
+            end = current_index + length
+            name = Generate_Frag_Name(counter, current_index, STR__forward, end)
+            unfinished_frags.append([length, 1, n, name])
+            forwards -= 1
+        
+        while backwards > 0:
+            length = Custom_Random_Distribution(frag_len, frag_len_method,
+                    frag_len_param)
+            end = current_index - length
+            if end > 0:
+                counter += 1
+                count += 1
+                total += length
+                index = 0-length
+                bases = previous[index:]
+                seq = "".join(bases)
+                name = Generate_Frag_Name(counter, current_index, STR__reverse,
+                        end)
+                s = ">" + name + "\n" + seq + "\n"
+                o.write(s)
+            backwards -= 1
+    
+    # Close file
+    if type(output) == str: o.close()
+    
+    # Return
+    return [count, total]
 
 def Report_Metrics(outcomes):
     """
+    Print a report into the command line interface of the total number of
+    fragments generated, and the average length.
+    
+    @outcomes
+            (list<[int,int]>)
+            A list of sublists, each containing two integers, a fragment count,
+            and the total number of basepairs in the fragments.
+    
+    Report_Metrics(list<[int,int]>) -> None
     """
-    pass
+    # Can potentially be expanded to include more metrics in the future
+    # Get results
+    count = 0
+    total = 0
+    for outcome in outcomes:
+        count += outcome[0]
+        total += outcome[1]
+    if count: average = int((float(total)/count) + 0.5)
+    else: average = 0
+    # Strings
+    str_count = str(count)
+    str_average = str(average)
+    # Padding and formatting
+    max_size = max([len(str_count), len(str_average)])
+    str_count = Pad_Str(str_count, max_size, " ", 0)
+    str_average = Pad_Str(str_average, max_size, " ", 0)
+    # Print
+    PRINT.printM(STR__metrics.format(C = str_count, A = str_average))
 
-"""
-NOTES: (Delete later)
-def Test(multiplier, alpha, beta):
-	total = 0
-	for i in range(1000000):
-		x = int(random.gammavariate(alpha, beta) * 0.5 * multiplier + 0.5)
-		total += x
-	print total/1000000.0
-
-def Test2(multiplier, alpha, beta):
-	total = 0
-	count = 0
-	for i in range(100):
-		if multiplier > 0:
-			x = int(random.gammavariate(alpha, beta) * multiplier + 0.5)
-			if x > multiplier: count += 1
-		else:
-			x = int(random.gammavariate(alpha, beta) * multiplier + 0.5) + -2 * multiplier
-			if x > -multiplier: count += 1
-		total += x
-		print x
-	print
-	print count
-	print total/100.0
-"""
+def Custom_Random_Distribution(mean, method, param, must_positive=False):
+    """
+    Generate a random number.
+    
+    The distribution of the amortized 
+    """
+    if method == DIST.UNIFORM:
+        r = Random.choice(param)
+    else:
+        if method == DIST.NORMAL:
+            r = Random.normalvariate(mean, param)
+        elif method == DIST.GAMMA:
+            r = Random.gammavariate(param[0], param[1])
+            if param[2]: r = -r + 2
+        r = int(r+0.5)
+    if must_positive:
+        if r < 0: r = -r
+    return r
+    
+def Generate_Frag_Name(counter, start, direction, end):
+    """
+    Generate a name for a DNA fragment based on how many fragments have already
+    been generated, and the coordinates and directionality of the fragment.
+    """
+    sb = Pad_Str(str(counter), ID_SIZE, "0", 0)
+    sb = sb + "__" + str(start) + "_" + direction + "_" + str(end)
+    return sb
 
 
