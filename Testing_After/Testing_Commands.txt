@@ -2,3 +2,19 @@
 C:\Python27\python.exe ..\Generate_Random_Chromosomes.py chr_sizes__test_001.tsv
 
 C:\Python27\python.exe ..\Generate_Random_Chromosomes.py chr_sizes__test_001.tsv -o chr_sizes__test_002 -w 40 -m GC 90
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_004__FRAGMENTS.fa -r 150
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_005__FRAGMENTS.fa -l 300 -f G 1
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_006__FRAGMENTS.fa -c G 0.1
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_007__FRAGMENTS.fa -f N 200
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_008__FRAGMENTS.fa -l 550 -f U 50
+
+C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_009__FRAGMENTS.fa -l 800 -f N 0 -d 20
+
+
