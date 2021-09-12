@@ -401,8 +401,8 @@ STR__generation_invalid = "\nERROR: An unexpected error occured during the "\
 
 
 STR__metrics = """
-Total fragments generated: {C}
-Average fragment size:     {A}"""
+    Total fragments generated: {C}
+        Average fragment size: {A}"""
 
 STR__GenFrags_begin = "\nRunning Generate_Fragments..."
 
