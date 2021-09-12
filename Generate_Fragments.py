@@ -404,9 +404,9 @@ STR__metrics = """
 Total fragments generated: {C}
 Average fragment size:     {A}"""
 
-STR__GenFrags_begin = "\nRunning Generate_Random_Chromosomes..."
+STR__GenFrags_begin = "\nRunning Generate_Fragments..."
 
-STR__GenFrags_complete = "\nGenerate_Random_Chromosomes successfully finished."
+STR__GenFrags_complete = "\nGenerate_Fragments successfully finished."
 
 
 
