@@ -66,7 +66,7 @@ OPTIONAL:
         
         (DEFAULT path generation available)
         
-        The filepath of the output file where resultant FASTA files will be
+        The filepath of the output file where resultant FASTA file will be
         output into.
     
     depth_of_coverage
@@ -98,7 +98,7 @@ OPTIONAL:
         (DEFAULT (-c): G)
         (DEFAULT (-f): N)
         
-        The probasbility distribution used to generate fragments and determine
+        The probability distribution used to generate fragments and determine
         fragment length.
             
             N   Normal variate distribution
