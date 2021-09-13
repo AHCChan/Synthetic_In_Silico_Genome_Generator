@@ -106,7 +106,7 @@ OPTIONAL:
         
         (DEFAULT (-q): N)
         (DEFAULT (-d): G)
-        (DEFAULT (-t): G)
+        (DEFAULT (-t): U)
         
         The probability distribution used to determine random values for things
         like phred scores, duplicate copy number and truncation length.
@@ -126,7 +126,6 @@ OPTIONAL:
         
         (Only applies if a Gamma Variate distribution was specified)
         (DEFAULT (-d): 1)
-        (DEFAULT (-t): 1)
         
         The skewness factor of the Gamma distribution.
         
@@ -146,6 +145,7 @@ OPTIONAL:
     max_dist
         
         (Only applies if a Uniform distribution was specified)
+        (DEFAULT (-t): 0)
         
         The furthest away from the specified average which a randomly generated
         value can be.
@@ -231,14 +231,24 @@ PRINT_INTERVAL = 10000
 # Defaults #####################################################################
 "NOTE: altering these will not alter the values displayed in the HELP DOC"
     
-DEFAULT__depth = 10
-DEFAULT__read_len = -1
-DEFAULT__frag_len = 500
-DEFAULT__cov_dist = 2 # DIST.GAMMA = 2. Alter this if the DIST enum is altered
-DEFAULT__cov_num = 1
-DEFAULT__frag_dist = 1 # DIST.NORMAL = 1. Alter this if the DIST enum is altered
-DEFAULT__frag_num = 50
-DEFAULT__method = 1
+DEFAULT__read_1_len = 75
+DEFAULT__read_2_len = 75
+
+DEFAULT__phred = "phred33"
+
+DEFAULT__avg_quality = 20
+DEFAULT__quality_dist = 1 # DIST.NORMAL = 1. Alter if the DIST enum is altered
+DEFAULT__quality_param = 5
+
+DEFAULT__avg_dupes = 1
+DEFAULT__dupes_dist = 2 # DIST.GAMMA = 2. Alter if the DIST enum is altered
+DEFAULT__dupes_param = 5
+DEFAULT__min_dupes = 1
+DEFAULT__max_dupes = 1
+
+DEFAULT__avg_trunc = 0
+DEFAULT__trunc_dist = 3 # DIST.UNIFORM = 3. Alter if the DIST enum is altered
+DEFAULT__trunc_param = 0
 
 
 
@@ -354,9 +364,6 @@ for i in LIST__normal: DICT__dists[i] = DIST.NORMAL
 for i in LIST__gamma: DICT__dists[i] = DIST.GAMMA
 for i in LIST__uniform: DICT__dists[i] = DIST.UNIFORM
 
-DICT__methods = {}
-for i in LIST__all: DICT__methods[i] = METHOD.ALL
-
 
 
 # Apply Globals ################################################################
@@ -371,6 +378,7 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 def Generate_Fragments(path_in, path_out, depth_settings, read_len,
             frag_settings, method_settings):
-
+    """
+    """
 
 
