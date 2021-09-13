@@ -168,14 +168,6 @@ CONTEXTUAL FLAGS:
         Used to signify that the following parameters pertain to the probability
         distribution of truncation length.
 
-USAGE:
-    
-    python27 Generate_Reads.py <input_filepath> [-o <output_filepath_r1>
-            <output_filepath_r2>] [-r <read_1_len> <read_2_len>] [-p <phred>]
-            [-q <avg_quality> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-d
-            <avg_duplicates> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-m
-            <min_duplicates> <max_duplicates>] [-t <avg_truncation> N|G|U
-            <stdev>|<alpha_mod>|<max_dist>]
 
 
 EXAMPLES SCENARIO EXPLANATION:
@@ -262,10 +254,12 @@ import random as Random
 
 
 import _Controlled_Print as PRINT
-import NSeq_Match as N_SEQ
 from _Command_Line_Parser import *
 
-from Chr_FASTA_File_Reader import *
+from NSeq_Match import *
+from Phred import *
+
+from FASTA_File_Reader import *
 
 
 
@@ -376,9 +370,28 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 # Functions ####################################################################
 
-def Generate_Fragments(path_in, path_out, depth_settings, read_len,
-            frag_settings, method_settings):
+def Generate_Reads(path_in, path_out, read_lengths, quality_params,
+            duplicate_params, duplicate_minmax, truncation_params):
     """
     """
+    return
+
+
+
+# Command Line Parsing #########################################################
+
+def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
+    """
+    Parse the command line input and call the Generate_Reads function
+    with appropriate arguments if the command line input is valid.
+    """
+    return
+
+
+
+# Main Loop ####################################################################
+
+if AUTORUN and (__name__ == "__main__"):
+    exit_code = Parse_Command_Line_Input__Generate_Reads(sys.argv)
 
 

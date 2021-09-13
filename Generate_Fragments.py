@@ -306,7 +306,7 @@ import random as Random
 
 
 import _Controlled_Print as PRINT
-import NSeq_Match as N_SEQ
+from NSeq_Match import *
 from _Command_Line_Parser import *
 
 from Chr_FASTA_File_Reader import *
@@ -691,7 +691,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
         current_index += 1
         
         n = f.Get_Current()
-        n_ = N_SEQ.Get_Complement(n)
+        n_ = Get_Complement(n)
         
         previous.append(n_)
         if len(previous) > max_len: previous.pop(0)
