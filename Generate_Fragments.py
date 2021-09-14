@@ -466,7 +466,7 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
             The filepath of the folder containing the FASTA file(s) containing
             the original DNA templates which the fragments are based on.
     @path_out
-            (str - dirpath)
+            (str - filepath)
             The file to which the output is written.
     @depth_settings
             ([int, int, float])
@@ -779,7 +779,10 @@ def Report_Metrics(outcomes):
 
 def Custom_Random_Distribution(mean, method, param, must_positive=False):
     """
-    Generate a random number.
+    MAY BE DIFFERENT FROM OTHER Custom_Random_Distribution FUNCTIONS IN OTHER
+    PROGRAMS.
+    
+    Generate a random integer.
     
     The distribution of the amortized results of this function being run,
     multiple times, with the same parameters, will be equal to [mean], or
@@ -794,7 +797,7 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
             The desired average outcome.
             In the case where a Uniform distribution is chosen and @mean is not
             0, then the average outcome of this function with the same
-            parameters will be (@mean+@param)
+            parameters will be @mean+@param.
     @method
             (int) - Pseudo ENUM
             An integer signifying which probability distribution to use:
@@ -813,13 +816,16 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
                     Gamma distribution, and a flag indicating whether to
                     flip-shift the result or not.
                 UNIFORM:
-                    (list/int)
                     If @mean is 0, then @param is a list of values, one of which
                     will be chosen at random with equal probability.
-                    If @mean is not zero, then @param is the number to add
+                    If @mean is not zero, then @param is the number to add,
+                    essentially resulting in a series of numbers which are
+                    either FLOOR(@mean) or CEILING(@mean), the average of which
+                    is @mean.
     @must_positive
             (bool)
-            Whether or not to forcibly make
+            Whether or not to forcibly make the result positive if it is
+            negative.
     
     Custom_Random_Distribution(int/float, int, *, bool) -> int/float
     """

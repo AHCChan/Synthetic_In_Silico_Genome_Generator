@@ -18,7 +18,7 @@ USAGE:
             [-q <avg_quality> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-d
             <avg_duplicates> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-m
             <min_duplicates> <max_duplicates>] [-t <avg_truncation> N|G|U
-            <stdev>|<alpha_mod>|<max_dist>]
+            <stdev>|<alpha_mod>|<max_dist>] [-x <threads>]
 
 
 
@@ -106,7 +106,7 @@ OPTIONAL:
         
         (DEFAULT (-q): N)
         (DEFAULT (-d): G)
-        (DEFAULT (-t): U)
+        (DEFAULT (-t): N)
         
         The probability distribution used to determine random values for things
         like phred scores, duplicate copy number and truncation length.
@@ -119,6 +119,7 @@ OPTIONAL:
         
         (Only applies if a Normal Variate distribution was specified)
         (DEFAULT (-q): 5)
+        (DEFAULT (-t): 0)
         
         The standard deviation of the normal distribution.
     
@@ -145,10 +146,16 @@ OPTIONAL:
     max_dist
         
         (Only applies if a Uniform distribution was specified)
-        (DEFAULT (-t): 0)
         
         The furthest away from the specified average which a randomly generated
         value can be.
+        
+    threads
+        
+        (DEFAULT: 1)
+        
+        (Multithreading is not yet implemented. This is a placeholder.)
+        The number of threads to use.
 
 CONTEXTUAL FLAGS:
 (For specifying probability distribution parameters)
@@ -209,7 +216,8 @@ PRINT_METRICS = True
 
 # Minor Configurations #########################################################
 
-FILEMOD__FASTQ = "__READS.fq"
+FILEMOD__FASTQ_1 = "__READS_r1.fq"
+FILEMOD__FASTQ_2 = "__READS_r2.fq"
 
 # For name string
 COPY_DIGITS = 3
@@ -239,7 +247,7 @@ DEFAULT__min_dupes = 1
 DEFAULT__max_dupes = 1
 
 DEFAULT__avg_trunc = 0
-DEFAULT__trunc_dist = 3 # DIST.UNIFORM = 3. Alter if the DIST enum is altered
+DEFAULT__trunc_dist = 1 # DIST.NORMAL = 1. Alter if the DIST enum is altered
 DEFAULT__trunc_param = 0
 
 
@@ -313,10 +321,11 @@ STR__generation_invalid = "\nERROR: An unexpected error occured during the "\
 
 
 STR__metrics = """
-    Total reads/pairs generated: {C}
+      Total fragments processed: {F}
+          Total reads generated: {R}
 
-    Average forward read length: {F}
-    Average reverse read length: {R}
+    Average forward read length: {A}
+    Average reverse read length: {B}
 
           Average quality score: {Q}
         Average duplicate count: {D}
@@ -370,11 +379,459 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 # Functions ####################################################################
 
-def Generate_Reads(path_in, path_out, read_lengths, quality_params,
-            duplicate_params, duplicate_minmax, truncation_params):
+def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
+            duplicate_settings, duplicate_minmax, truncation_settings, threads):
     """
+    Generate a series of DNA reads from the DNA fragments in a FASTA file. This
+    is designed to imitate the sequencing of DNA fragments in NGS.
+    
+    @path_in
+            (str - filepath)
+            The filepath of the FASTA file which contains the DNA fragment
+            sequences.
+    @paths_out
+            (list<str - filepath))
+            The files to which the forward and reverse reads respectively are
+            to be written.
+    @phred
+            (dict<int:str>)
+            OR
+            (str)
+            A phred dictionary which can convert phred scores into their
+            corresponding chars.
+            OR
+            A string denoting the relevant phred dictionary.
+    @read_lengths
+            ([int, int])
+            The length of the forward and reverse reads respectively.
+    @quality_settings
+            ([int, int, float])
+            If the first value in the list is set to 0, reads will 100% accurate
+            transcriptions of the template, and the quality scores will be set
+            to 42 (the maximum) for every base.
+            Otherwise, this list contains the "quality score" settings used for
+            randomly generating quality scores (and thus accuracy) of the read
+            basepairs.
+            Otherwise, this is list containing the following three variables:
+                1)  (int)
+                    The mean value of the statistical distribution.
+                2)  (int) - Pseudo ENUM
+                    An int which signifies which statistical distribution to
+                    use:
+                        0: Normal distribution
+                        1: Gamma distribution
+                        2: Uniform distribution
+                3)  (float)
+                    The paramter variable to use for the statistical
+                    distribution specified by the second variable in this list.
+                    Its meaning will vary depending on the distribution:
+                        NORMAL DISTRIBUTION:
+                            This variable is the standard deviation.
+                        GAMMA DISTRIBUTION:
+                            This variable is the alpha modifier of the
+                            distribution. The beta value is automatically
+                            calculated such at A*B=Average_Depth. If a negative
+                            value is provided, the distribution used will change
+                            to a flip-shifted gamma distribution.
+                        UNIFORM DISTRIBUTION:
+                            (Only relevant for fragment lenth settings)
+                            This variable is the difference between the mean of
+                            the distribution, and either the upper or lower
+                            limits of the distribution range.
+    @duplicate_settings
+            ([int, int, float])
+            The "quality score" settings used for randomly generating the
+            number of read/read-pair duplicates on different individual
+            fragments.
+            A list containing three variables with an identical layout to
+            @quality_settings. (See above)
+    @duplicate_minmax
+            ([int, int])
+            The minimum and maximum number of duplicates permitted per fragment.
+    @truncation_settings
+            ([int, int, float])
+            The "quality score" settings used for randomly generating the
+            number of nucleotides to be truncated on different individual
+            reads.
+            A list containing three variables with an identical layout to
+            @quality_settings. (See above)
+    @threads
+            (int)
+            The number of threads to use. (Multi-threading) Functionality not
+            implemented yet.
+    
+    Return a value of 0 if the function runs successfully.
+    Return a value of 1 if there is a problem with the input file.
+    Return a value of 2 if there is a problem with the output file.
+    Return a value of 3 if there is a problem during the read generation
+            process.
+    Return a value of 4 if there is a problem with [phred].
+    
+    Generate_Reads(str, str, [int, int], [int, int, float], [int, int, float],
+            [int, int], [int, int, float], int) -> int
     """
-    return
+    # Setup reporting
+    fragments = 0
+    reads = 0
+    bases_forward = 0
+    bases_reverse = 0
+    cumulative_score = 0
+    cumulative_copies = 0
+    # Calculate distribution parameters
+    quality_settings = Calculate_Dist_Params(quality_settings)
+    duplicate_settings = Calculate_Dist_Params(duplicate_settings)
+    truncation_settings = Calculate_Dist_Params(truncation_settings)
+    # Phred
+    if type(phred) == str:
+        if phred in LIST__phred33: phred = DICT__scores_to_chars__phred33
+        elif phred in LIST__phred64: phred = DICT__scores_to_chars__phred64
+    else: return 4
+    # Setup the I/O
+    try:
+        f = FASTA_Reader()
+        f.Open(path_in)
+    except:
+        return 1
+    try:
+        o1 = open(paths_out[0], "w")
+        o2 = open(paths_out[1], "w")
+        o = [o1, o2]
+    except:
+        return 2
+    # Muli-threading
+    """
+    TODO: Multi-threading has not yet been implemented.
+    """
+    threading = None
+    # Main loop
+    PRINT.printP(STR__GenReads_begin)
+    while not f.End():
+        f.Read()
+        frag = f.Get_Current_SOFT()
+        metrics = Generate_Reads_From_Frag(frag, o, phred, read_lengths,
+            quality_settings, duplicate_settings, duplicate_minmax,
+            truncation_settings, threading)
+        # Update metrics
+        fragments += 1
+        reads += metrics[0]
+        bases_forward += metrics[1]
+        bases_reverse += metrics[2]
+        cumulative_score += metrics[3]
+        cumulative_copies += metrics[4]
+    # Finish up
+    o1.close()
+    o2.close()
+    f.Close()
+    PRINT.printP(STR__GenReads_complete)
+    # Reporting
+    Report_Metrics(fragments, reads, bases_forward, bases_reverse,
+            cumulative_score, cumulative_copies)
+    # Wrap up
+    return 0
+
+
+
+def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
+            quality_settings, duplicate_settings, duplicate_minmax,
+            truncation_settings, threading):
+    """
+    Generate a number of DNA reads from a given DNA fragment.
+    
+    Return a list containing various metrics for how this operation went.
+    
+    This is a modular component of Generate_Reads. Generate_Reads works with an
+    entire input file which contains multiple fragments. This function deals
+    with individual fragments.
+    """
+    # Metrics
+    reads = 0
+    bases_forward = 0
+    bases_reverse = 0
+    cumulative_score = 0
+    cumulative_copies = 0
+    # Unpacking
+    frag_name, anno, frag_seq = frag
+    length_f, length_r = read_lengths
+    min_, max_ = duplicate_minmax
+    d1, d2, d3 = duplicate_settings
+    t1, t2, t3 = truncation_settings
+    # Determine duplicates
+    if min_ == max_:
+        duplicates = min_
+    else:
+        duplicates = Custom_Random_Distribution(d1, d2, d3)
+        if duplicates < min_: duplicates = min_
+        elif duplicates > max_: duplicates = max_
+    # Per duplicate
+    while duplicates > 0:
+        # Lengths
+        if ( t2 == DIST.NORMAL and t3 == 0 ):
+            if type(t1) == float: t1 = int(t1+0.5)
+            trunc_f = trunc_r = t1
+        else:
+            trunc_f = Custom_Random_Distribution(t1, t2, t3)
+            trunc_r = Custom_Random_Distribution(t1, t2, t3)
+        temp_f = length_f - trunc_f
+        temp_r = length_r - trunc_r
+        # Generate reads
+        flag_copy = False
+        if temp_f > 1: # Forward
+            # Generate read
+            name = Generate_Name(frag_name, duplicates, STR__forward)
+            seq = frag_seq[:temp_f]
+            results = Generate_Reads_From_Seq(seq, phred, temp_f,
+                    quality_settings)
+            read, scores, total = results
+            # Write
+            sb = "@" + name + "\n" + read + "\n+\n" + scores + "\n"
+            o[0].write(sb)
+            # Metrics
+            reads += 1
+            bases_forward += temp_f
+            flag_copy = True
+            cumulative_score += total
+        if temp_r > 1: # Reverse
+            # Generate read
+            name = Generate_Name(frag_name, duplicates, STR__reverse)
+            temp = frag_seq[-temp_r:]
+            seq = Get_Complement(temp)
+            results = Generate_Reads_From_Seq(seq, phred, temp_r,
+                    quality_settings)
+            read, scores, total = results
+            # Write
+            sb = "@" + name + "\n" + read + "\n+\n" + scores + "\n"
+            o[1].write(sb)
+            # Metrics
+            reads += 1
+            bases_reverse += temp_f
+            flag_copy = True
+            cumulative_score += total
+        #
+        if flag_copy: cumulative_copies += 1
+        duplicates -= 1
+    # Return
+    return [reads, bases_forward, bases_reverse, cumulative_score,
+            cumulative_copies]
+
+def Generate_Read_From_Seq(seq, phred, length, quality_settings):
+    """
+    Generate a DNA read from a given DNA sequence.
+    
+    This is a modular component of Generate_Reads_From_Frag. Each fragment can
+    generate multiple reads. This function deals with individual reads.
+    """
+    # Quality
+    q1, q2, q3 = quality_settings
+    if ( q2 == DIST.NORMAL and q2 == DIST.UNIFORM ) and  q3 == 0:
+        if q1 == 0: # Perfect accuracy
+            scores = phred[42] * length
+            return [seq, scores, 0]
+        # Consistent accuracy
+        flag = True
+    else: flag = False # Inconsistent accuracy
+    # Metric
+    total = 0
+    # Setup
+    read = ""
+    scores = ""
+    # Loop
+    for char in seq:
+        q = Custom_Random_Distribution(q1, q2, q3, True)
+        threshold = phred[q]
+        r = Random.random()
+        if r < threshold: # Match
+            read += char
+        else: # Mismatch
+            possible = DICT__mismatches[char]
+            char = Random.choice(possible)
+            read += char
+        scores += phred[q]
+        total += q   
+    # Return
+    return [read, scores, total]
+
+
+
+def Calculate_Dist_Params(settings):
+    """
+    Return a processed and expanded version of the randomized statistical
+    distribution parameter settings.
+    
+    @settings
+            ([int/float, int, int/float])
+            Three values, which are the mean, the distribution method, and the
+            additional parameters respectively.
+    
+    Calculate_Dist_Params([int/float, int, int/float]) -> [int/float, int,
+            int/float]
+    """
+    mean, dist, param = settings
+    if dist == DIST.GAMMA:
+        beta = ( float(mean) / param ) ** 0.5
+        alpha = float(mean) / beta
+        param = [alpha, beta]
+    elif dist == DIST.UNIFORM:
+        if param:
+            lower = mean - param
+            upper = mean + param
+            param = range(lower, upper+1)
+        else:
+            param = 0
+            while mean > 1:
+                param += 1
+                mean -= 1
+    return [mean, dist, param]
+
+def Custom_Random_Distribution(mean, method, param, must_positive=False):
+    """
+    MAY BE DIFFERENT FROM OTHER Custom_Random_Distribution FUNCTIONS IN OTHER
+    PROGRAMS.
+    
+    Generate a random integer.
+    
+    The distribution of the amortized results of this function being run,
+    multiple times, with the same parameters, will be equal to [mean], or
+    [mean]+[param] in the case of certain uniform distributions.
+
+    MAJORLY DIFFERING SPECIAL BEHAVIOUR:
+    If [mean] is 0 and the normal distribution method is chosen, one of the
+    values in [param] will be chosen at random
+    
+    @mean
+            (int/float)
+            The desired average outcome.
+            In the case where a Uniform distribution is chosen and @mean is not
+            0, then the average outcome of this function with the same
+            parameters will be @mean+@param.
+    @method
+            (int) - Pseudo ENUM
+            An integer signifying which probability distribution to use:
+                0: Normal distribution
+                1: Gamma distribution
+                2: Uniform distribution
+    @param
+            (*)
+            Varies depending on the distribution method chosen:
+                NORMAL DISTIRBUTION:
+                    (float)
+                    The standard deviation of the normal distribution.
+                GAMMA DISTRIBUTION:
+                    ([float, float, bool])
+                    A list containing the Alpha and Beta to be used for the
+                    Gamma distribution, and a flag indicating whether to
+                    flip-shift the result or not.
+                UNIFORM:
+                    (list/int)
+                    If @mean is 0, then @param is a list of values, one of which
+                    will be chosen at random with equal probability.
+                    If @mean is not zero, then @param is the number to add,
+                    essentially resulting in a series of numbers which are
+                    either FLOOR(@mean) or CEILING(@mean), the average of which
+                    is @mean.
+    @must_positive
+            (bool)
+            Whether or not to forcibly make the result positive if it is
+            negative.
+    
+    Custom_Random_Distribution(int/float, int, *, bool) -> int
+    """
+    if method == DIST.UNIFORM:
+        if mean:
+            r = Random.random()
+            if r > mean: return param+1
+            else: return param
+        else:
+            r = Random.choice(param)
+    else:
+        if method == DIST.NORMAL:
+            r = Random.normalvariate(mean, param)
+        elif method == DIST.GAMMA:
+            r = Random.gammavariate(param[0], param[1])
+            if param[2]: r = -r + 2
+        r = int(r+0.5)
+    if must_positive:
+        if r < 0: r = -r
+    return r
+
+def Generate_Name(frag_name, duplicates, orientation):
+    """
+    Generate a read name, given the name of a fragment, the current duplicate
+    number, and the orientation of the read.
+    
+    @frag_name   (str)
+    @duplicates  (int)
+    @orientation (str)
+    
+    Generate_Name(str, int, str) -> str
+    """
+    # Duplicate string
+    s = str(duplicates)
+    s = Pad_Str(s, COPY_DIGITS, "0")
+    # SB
+    sb = frag_name + "__" + s + "__" + orientation
+    return sb
+
+
+
+def Report_Metrics(fragments, reads, bases_forward, bases_reverse,
+            cumulative_score, cumulative_copies):
+    """
+    Print a report into the command line interface of the results of running
+    this program
+    
+    @fragments
+            (int)
+            The total number of fragments processed.
+    @reads
+            (int)
+            The total number of reads generated.
+    @bases_forward
+            (int)
+            The total number of nucleotides generated for forward reads.
+    @bases_reverse
+            (int)
+            The total number of nucleotides generated for reverse reads.
+    @cumulative_score
+            (int)
+            The cumulative total of the Phred scores of all the nucleotides
+            generated.
+    @cumulative_copies
+            (int)
+            The cumulative count of the number of copies.
+    
+    Report_Metrics(int,int,int,int,int,int) -> None
+    """
+    # Can potentially be expanded to include more metrics in the future
+    # Paired
+    if bases_reverse > 0: reads_ = reads/2
+    else: reads_ = reads
+    # Calculations
+    avg_f = float(bases_forward)/reads_
+    avg_r = float(bases_reverse)/reads_
+    total_b = bases_forward + bases_reverse
+    avg_score = float(cumulative_score)/total_b
+    avg_copies = float(cumulative_copies)/reads_
+    # Strings
+    str_frags = str(fragments) + "   "
+    str_reads = str(reads) + "   "
+    str_f = str(avg_f) + "   "
+    str_r = str(avg_r) + "   "
+    str_avg_score = str(avg_score)
+    str_avg_copies = str(avg_copies)
+    # Padding and formatting
+    str_avg_score = Trim_Percentage_Str(str_avg_score, 2)
+    str_avg_copies = Trim_Percentage_Str(str_avg_copies, 2)
+    max_size = max([len(str_frags), len(str_reads), len(str_f), len(str_r),
+            len(str_avg_score), len(str_avg_copies)])
+    str_frags = Pad_Str(str_frags, max_size, " ", 0)
+    str_reads = Pad_Str(str_reads, max_size, " ", 0)
+    str_f = Pad_Str(str_f, max_size, " ", 0)
+    str_r = Pad_Str(str_fr, max_size, " ", 0)
+    str_avg_score = Pad_Str(str_avg_score, max_size, " ", 0)
+    str_avg_copies = Pad_Str(str_avg_copies, max_size, " ", 0)
+    # Print
+    PRINT.printM(STR__metrics.format(F = str_frags, R = str_reads, A = str_f,
+            B = str_r, Q = str_avg_score, D = str_avg_copies))
 
 
 
