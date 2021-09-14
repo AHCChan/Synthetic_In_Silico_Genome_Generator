@@ -16,8 +16,6 @@ from File_Reader import *
 
 LIST__nucleotide_chars = ["A", "C", "G", "T", "a", "c", "g", "t", "N", "n"]
 
-LIST__newline = ["\n", "\r"]
-
 
 
 # Classes ######################################################################
@@ -28,7 +26,7 @@ class FASTA_Reader(File_Reader):
 
     Designed for the following use:
     
-    f = File_Reader()
+    f = FASTA_Reader()
     f.Open("F:/Filepath.fa")
     while not f.End():
         f.Read()
