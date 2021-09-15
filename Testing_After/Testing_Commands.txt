@@ -17,4 +17,16 @@ C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes
 
 C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_009__FRAGMENTS.fa -l 800 -f N 0 -d 20
 
+C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa
+
+C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_011_r1.fq test_011_r2.fq 
+
+C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_012_r1.fq test_012_r2.fq -q 0 N 0
+
+C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_013_r1.fq test_013_r2.fq -t 2 G 0.01
+
+C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_014_r1.fq test_014_r2.fq -d 3 U 2 -m 1 5
+
+C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_015_r1.fq x -r 75 0
+
 
