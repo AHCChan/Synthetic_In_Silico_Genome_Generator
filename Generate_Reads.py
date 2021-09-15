@@ -180,12 +180,32 @@ CONTEXTUAL FLAGS:
 EXAMPLES SCENARIO EXPLANATION:
     
     1:
-    An almost bare minimum use case. (Specifying the output path is not
-    mandatory, but it is good practice to do so.)
+    A bare minimum use case. (All options use defaults)
+    
+    2:
+    Flawlessly accurate sequencing.
+    
+    3:
+    Some truncation occurs.
+    
+    4:
+    All fragments generate 1-5 duplicates, with the duplicate count uniformly
+    distributed.
+    
+    5:
+    Single-end, 75bp sequencing.
 
 EXAMPLES:
     
-    python27 Generate_Reads.py Path/Input_Frags.fa -o Output_Reads.fq
+    python27 Generate_Reads.py Path/Input_Frags.fa
+    
+    python27 Generate_Reads.py Path/Input_Frags.fa -q 0 N 0
+    
+    python27 Generate_Reads.py Path/Input_Frags.fa -t 2 G 0.01
+    
+    python27 Generate_Reads.py Path/Input_Frags.fa -d 3 U 2 -m 1 5
+    
+    python27 Generate_Reads.py Path/Input_Frags.fa -r 75 0
 
 USAGE:
     
@@ -230,11 +250,11 @@ PRINT_INTERVAL = 10000
 
 # Defaults #####################################################################
 "NOTE: altering these will not alter the values displayed in the HELP DOC"
+
+DEFAULT__phred = "phred33"
     
 DEFAULT__read_1_len = 75
 DEFAULT__read_2_len = 75
-
-DEFAULT__phred = "phred33"
 
 DEFAULT__avg_quality = 20
 DEFAULT__quality_dist = 1 # DIST.NORMAL = 1. Alter if the DIST enum is altered
@@ -249,6 +269,8 @@ DEFAULT__max_dupes = 1
 DEFAULT__avg_trunc = 0
 DEFAULT__trunc_dist = 1 # DIST.NORMAL = 1. Alter if the DIST enum is altered
 DEFAULT__trunc_param = 0
+
+DEFAULT__threads = 1
 
 
 
@@ -287,17 +309,27 @@ STR__use_help = "\nUse the -h option for help:\n\t python "\
 
 
 
-STR__invalid_dist = """
-ERROR: Invalid statistical distribution: {s}
-Please specify one of:
-    NORMAL
-    GAMMA
-    UNIFORM"""
+STR__invalid_lengths = """
+ERROR: Invalid read lengths:
+    {s1}
+    {s2}
+Please specify non-negative integers, at least one of which should also be
+non-zero."""
 
-STR__invalid_dist_params = """
-ERROR: Invalid {S} parameters:
-    (Distribution): {D}
-    (Parameter):    {P}
+STR__min_dupe = """
+ERROR: Invalid minimum number of duplicates: {s}
+Please specify a non-negative integer."""
+STR__max_dupe = """
+ERROR: Invalid maximum number of duplicates: {s}
+Please specify a positivee integer."""
+
+STR__invalid_avg = """
+ERROR: Invalid {s} average: {m}
+Please specify a number."""
+STR__invalid_params = """
+ERROR: Invalid {s} statistical distribution parameters:
+    (Distribution): {d}
+    (Parameter):    {p}
 
 For the distribution model, please specify one of:
     NORMAL
@@ -308,6 +340,10 @@ For the parameter, depending on the distribution model chosen, please specify:
     NORMAL - A non-negative number.
     GAMMA - A non-zero number.
     UNIFORM - A non-negative integer."""
+
+STR__invalid_threads = """
+ERROR: Invalid number of threads specified: (s}
+Please specify a positive integer."""
 
 
 
@@ -488,7 +524,7 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
     if type(phred) == str:
         if phred in LIST__phred33: phred = DICT__scores_to_chars__phred33
         elif phred in LIST__phred64: phred = DICT__scores_to_chars__phred64
-    else: return 4
+        else: return 4
     # Setup the I/O
     try:
         f = FASTA_Reader()
@@ -496,8 +532,10 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
     except:
         return 1
     try:
-        o1 = open(paths_out[0], "w")
-        o2 = open(paths_out[1], "w")
+        if read_lengths[0]: o1 = open(paths_out[0], "w")
+        else: o1 = None
+        if read_lengths[1]: o2 = open(paths_out[1], "w")
+        else: o2 = None
         o = [o1, o2]
     except:
         return 2
@@ -524,8 +562,8 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
         cumulative_score += metrics[5]
         cumulative_copies += metrics[6]
     # Finish up
-    o1.close()
-    o2.close()
+    if read_lengths[0]: o1.close()
+    if read_lengths[1]: o2.close()
     f.Close()
     PRINT.printP(STR__GenReads_complete)
     # Reporting
@@ -633,10 +671,10 @@ def Generate_Read_From_Seq(seq, phred, length, quality_settings):
     """
     # Quality
     q1, q2, q3 = quality_settings
-    if ( q2 == DIST.NORMAL and q2 == DIST.UNIFORM ) and  q3 == 0:
+    if ( q2 == DIST.NORMAL or q2 == DIST.UNIFORM ) and q3 == 0:
         if q1 == 0: # Perfect accuracy
             scores = phred[42] * length
-            return [seq, scores, 0]
+            return [seq, scores, 0, 0]
         # Consistent accuracy
         flag = True
     else: flag = False # Inconsistent accuracy
@@ -689,6 +727,7 @@ def Calculate_Dist_Params(settings):
             lower = mean - param
             upper = mean + param
             param = range(lower, upper+1)
+            mean = 0
         else:
             param = 0
             while mean > 1:
@@ -871,7 +910,267 @@ def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
     Parse the command line input and call the Generate_Reads function
     with appropriate arguments if the command line input is valid.
     """
-    return
+    PRINT.printP(STR__parsing_args)
+    # Remove the runtime environment variable and program name from the inputs
+    inputs = Strip_Non_Inputs(raw_command_line_input, NAME)
+    
+    # No inputs
+    if not inputs:
+        PRINT.printE(STR__no_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Help option
+    if inputs[0] in LIST__help:
+        print(HELP_DOC)
+        return 0
+    
+    # Initial validation (Redundant in current version)
+    if len(inputs) < 1:
+        PRINT.printE(STR__insufficient_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Validate mandatroy inputs
+    path_in = inputs.pop(0)
+    valid = Validate_Read_Path(path_in)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read.format(f = path_in))
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Set up rest of the parsing
+    path_out_r1 = Generate_Default_Output_File_Path_From_Folder(path_in,
+            FILEMOD__FASTQ_1)
+    path_out_r2 = Generate_Default_Output_File_Path_From_Folder(path_in,
+            FILEMOD__FASTQ_2)
+    phred = DEFAULT__phred
+    len_1 = DEFAULT__read_1_len
+    len_2 = DEFAULT__read_2_len
+    avg_quality = DEFAULT__avg_quality
+    quality_dist = DEFAULT__quality_dist
+    quality_param = DEFAULT__quality_param
+    avg_dupes = DEFAULT__avg_dupes
+    dupes_dist = DEFAULT__dupes_dist
+    dupes_param = DEFAULT__dupes_param
+    min_dupes = DEFAULT__min_dupes
+    max_dupes = DEFAULT__max_dupes
+    avg_trunc = DEFAULT__avg_trunc
+    trunc_dist = DEFAULT__trunc_dist
+    trunc_param = DEFAULT__trunc_param
+    threads = DEFAULT__threads
+    
+    # Validate optional inputs (except output path)
+    while inputs:
+        arg = inputs.pop(0)
+        
+        # Confirm valid flag
+        if arg in ["-p", "-x"]: # Second argument
+            try:
+                arg2 = inputs.pop(0)
+            except:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+        elif arg in ["-o", "-r", "-m"]: # Second and third arguments
+            try:
+                arg2 = inputs.pop(0)
+                arg3 = inputs.pop(0)
+            except:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+        elif arg in ["-q", "-d", "-t"]: # Second, third, and fourth arguments
+            try:
+                arg2 = inputs.pop(0)
+                arg3 = inputs.pop(0)
+                arg4 = inputs.pop(0)
+            except:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+        else: # Invalid
+            arg = Strip_X(arg)
+            PRINT.printE(STR__invalid_argument.format(s = arg))
+            PRINT.printE(STR__use_help)
+            return 1
+        
+        # Individual validation
+        if arg == "-o": # Output files - Actual validation done later
+            path_out_r1 = arg2
+            path_out_r2 = arg3
+        elif arg == "-r":
+            len_1 = Validate_Int_NonNeg(arg2)
+            len_2 = Validate_Int_NonNeg(arg3)
+            if len_1 == -1 or len_2 == -1 or ( len_1 == 0 and len_2 == 0 ):
+                PRINT.printE(STR__invalid_lengths.format(s1=arg2, s2=arg3))
+                return 1
+        elif arg == "-p":
+            phred = arg2
+        elif arg == "-m":
+            flag = False
+            min_dupes = Validate_Int_NonNeg(arg2)
+            max_dupes = Validate_Int_Positive(arg3)
+            if min_dupes == -1:
+                flag = True
+                PRINT.printE(STR__invalid_min_dupe.format(s = arg2))
+            if max_dupes == -1:
+                flag = True
+                PRINT.printE(STR__invalid_max_dupe.format(s = arg3))
+            if flag: return 1
+        elif arg == "-x":
+            threads = Validate_Int_Positive(arg2)
+            if threads == -1:
+                PRINT.printE(STR__invalid_threads.format(s = arg2))
+                return 1
+        else:
+            # Determine type
+            if arg == "-q": dist = "quality score"
+            if arg == "-d": dist = "duplicate copy number"
+            if arg == "-t": dist = "truncation length"
+            
+            # Validate
+            avg = Validate_Number(arg2)
+            params = Validate_Dist_Params(arg3, arg4)
+            if avg == None:
+                PRINT.printE(STR__invalid_avg.format(s=dist, m=arg2))
+                return 1
+            if not params:
+                PRINT.printE(STR__invalid_params.format(s=dist, d=arg3, p=arg4))
+                return 1
+            
+            # Type specific
+            if arg == "-q":
+                avg_quality = avg
+                quality_dist, quality_param = params
+            if arg == "-d":
+                avg_dupes = avg
+                dupes_dist, dupes_param = params
+            if arg == "-t":
+                avg_trunc = avg
+                trunc_dist, trunc_param = params
+    
+    # Validate phred
+    if phred in LIST__phred33: phred = DICT__scores_to_chars__phred33
+    elif phred in LIST__phred64: phred = DICT__scores_to_chars__phred64
+    else:
+        PRINT.printE(STR__invalid_phred.format(s = phred))
+        return 1
+    
+    # Validate output path
+    if len_1:
+        valid_out_1 = Validate_Write_Path(path_out_r1)
+        if valid_out_1 == 2: return 0
+        if valid_out_1 == 3:
+            PRINT.printE(STR__IO_error_write_forbid)
+            return 1
+        if valid_out_1 == 4:
+            PRINT.printE(STR__IO_error_write_unable)
+            return 1
+    if len_2:
+        valid_out_2 = Validate_Write_Path(path_out_r2)
+        if valid_out_2 == 2: return 0
+        if valid_out_2 == 3:
+            PRINT.printE(STR__IO_error_write_forbid)
+            return 1
+        if valid_out_2 == 4:
+            PRINT.printE(STR__IO_error_write_unable)
+            return 1
+    
+    # Run program
+    exit_state = Generate_Reads(path_in, [path_out_r1, path_out_r2], phred,
+            [len_1, len_2], [avg_quality, quality_dist, quality_param],
+            [avg_dupes, dupes_dist, dupes_param], [min_dupes, max_dupes],
+            [avg_trunc, trunc_dist, trunc_param], threads)
+    
+    # Exit
+    if exit_state == 0: return 0
+    else:
+        if exit_state == 1: PRINT.printE(STR__input_invalid)
+        if exit_state == 2: PRINT.printE(STR__output_invalid)
+        if exit_state == 3: PRINT.printE(STR__generation_invalid)
+        PRINT.printE(STR__use_help)
+        return 1
+
+
+
+def Validate_Dist_Params(method, param):
+    """
+    Validates the statistical distribution parameters; [method] needs to be text
+    indicating a valid distribution, and [param] needs to specify valid
+    parameters for said distribution, and will depend on [method].
+    
+    Return a list containing a pseudo-enum int and a second variable if the
+    parameters are valid.
+    Return an empty list if the parameters are invalid.
+    
+    Valid values for [method] include "Normal", "Gamma", and "Uniform", and all
+    capitalization variants of these strings.
+    
+    Regarding param:
+        
+        For a normal distribtions, [param] is the standard deviation, a
+        non-negative number.
+        
+        For a gamma distribution, [param] is the ratio between alpha and beta.
+        The greater it's value, the greater the ratio between the alpha and beta
+        values, and the more skwewed the data becomes. For negative [param]
+        values, the distribution is flip-shifted.
+        
+        For a uniform distribution, [param] is how far away from the average the
+        distribution range goes.
+    
+    Validate_Dist_Params(str, str) -> list<*>
+    """
+    dist = DICT__dists.get(method, 0)
+    if dist == 1: # Normal
+        param = Validate_Float_NonNeg(param)
+        if param == -1: return []
+    elif dist == 2: # Gamma
+        param = Validate_Float_NonZero(param)
+        if param == -1: return []
+    elif dist == 3: # Uniform
+        param = Validate_Int_NonNeg(param)
+        if param == -1: return []
+    else:
+        return []
+    return [dist, param]
+
+def Validate_Write_Path(filepath):
+    """
+    Validates the filepath of the output file.
+    Return 0 if the filepath is writtable.
+    Return 1 if the user decides to overwrite an existing file.
+    Return 2 if the user declines to overwrite an existing file.
+    Return 3 if the file exists and the program is set to forbid overwriting.
+    Return 4 if the program is unable to write to the filepath specified.
+    
+    Validate_Write_Path(str) -> int
+    """
+    try:
+        f = open(filepath, "U")
+        f.close()
+    except: # File does not exist. 
+        try:
+            f = open(filepath, "w")
+            f.close()
+            return 0 # File does not exist and it is possible to write
+        except:
+            return 4 # File does not exist but it is not possible to write
+    # File exists
+    if WRITE_PREVENT: return 3
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm.format(f = filepath))
+        if confirm not in LIST__yes: return 2
+    # User is not prevented from overwritting and may have chosen to overwrite
+    try:
+        f = open(filepath, "w")
+        f.close()
+        if WRITE_CONFIRM: return 1 # User has chosen to overwrite existing file
+        return 0 # Overwriting existing file is possible
+    except:
+        return 4 # Unable to write to specified filepath
+
 
 
 
