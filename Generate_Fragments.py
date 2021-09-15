@@ -981,10 +981,10 @@ def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
     valid_out = Validate_Write_Path(path_out)
     if valid_out == 2: return 0
     if valid_out == 3:
-        printE(STR__IO_error_write_forbid)
+        PRINT.printE(STR__IO_error_write_forbid)
         return 1
     if valid_out == 4:
-        printE(STR__In_error_write_unable)
+        PRINT.printE(STR__IO_error_write_unable)
         return 1
     
     # Run program
