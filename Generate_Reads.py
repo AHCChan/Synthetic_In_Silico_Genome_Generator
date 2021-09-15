@@ -324,8 +324,11 @@ STR__metrics = """
       Total fragments processed: {F}
           Total reads generated: {R}
 
-    Average forward read length: {A}
-    Average reverse read length: {B}
+    Average forward read length: {L1}
+        Average errors per read: {E1}
+
+    Average reverse read length: {L2}
+        Average errors per read: {E2}
 
           Average quality score: {Q}
         Average duplicate count: {D}
@@ -430,9 +433,7 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
                         GAMMA DISTRIBUTION:
                             This variable is the alpha modifier of the
                             distribution. The beta value is automatically
-                            calculated such at A*B=Average_Depth. If a negative
-                            value is provided, the distribution used will change
-                            to a flip-shifted gamma distribution.
+                            calculated such at A*B=Average_Depth.
                         UNIFORM DISTRIBUTION:
                             (Only relevant for fragment lenth settings)
                             This variable is the difference between the mean of
@@ -474,7 +475,9 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
     fragments = 0
     reads = 0
     bases_forward = 0
+    errors_forward = 0
     bases_reverse = 0
+    errors_reverse = 0
     cumulative_score = 0
     cumulative_copies = 0
     # Calculate distribution parameters
@@ -515,17 +518,19 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
         fragments += 1
         reads += metrics[0]
         bases_forward += metrics[1]
-        bases_reverse += metrics[2]
-        cumulative_score += metrics[3]
-        cumulative_copies += metrics[4]
+        errors_forward += metrics[2]
+        bases_reverse += metrics[3]
+        errors_reverse += metrics[4]
+        cumulative_score += metrics[5]
+        cumulative_copies += metrics[6]
     # Finish up
     o1.close()
     o2.close()
     f.Close()
     PRINT.printP(STR__GenReads_complete)
     # Reporting
-    Report_Metrics(fragments, reads, bases_forward, bases_reverse,
-            cumulative_score, cumulative_copies)
+    Report_Metrics(fragments, reads, bases_forward, errors_forward,
+            bases_reverse, errors_reverse, cumulative_score, cumulative_copies)
     # Wrap up
     return 0
 
@@ -546,7 +551,9 @@ def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
     # Metrics
     reads = 0
     bases_forward = 0
+    errors_forward = 0
     bases_reverse = 0
+    errors_reverse = 0
     cumulative_score = 0
     cumulative_copies = 0
     # Unpacking
@@ -571,6 +578,8 @@ def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
         else:
             trunc_f = Custom_Random_Distribution(t1, t2, t3)
             trunc_r = Custom_Random_Distribution(t1, t2, t3)
+        if trunc_f < 0: trunc_f = 0
+        if trunc_r < 0: trunc_r = 0
         temp_f = length_f - trunc_f
         temp_r = length_r - trunc_r
         # Generate reads
@@ -579,15 +588,16 @@ def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
             # Generate read
             name = Generate_Name(frag_name, duplicates, STR__forward)
             seq = frag_seq[:temp_f]
-            results = Generate_Reads_From_Seq(seq, phred, temp_f,
+            results = Generate_Read_From_Seq(seq, phred, temp_f,
                     quality_settings)
-            read, scores, total = results
+            read, scores, errors, total = results
             # Write
             sb = "@" + name + "\n" + read + "\n+\n" + scores + "\n"
-            o[0].write(sb)
+            outputs[0].write(sb)
             # Metrics
             reads += 1
             bases_forward += temp_f
+            errors_forward += errors
             flag_copy = True
             cumulative_score += total
         if temp_r > 1: # Reverse
@@ -595,23 +605,24 @@ def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
             name = Generate_Name(frag_name, duplicates, STR__reverse)
             temp = frag_seq[-temp_r:]
             seq = Get_Complement(temp)
-            results = Generate_Reads_From_Seq(seq, phred, temp_r,
+            results = Generate_Read_From_Seq(seq, phred, temp_r,
                     quality_settings)
-            read, scores, total = results
+            read, scores, errors, total = results
             # Write
             sb = "@" + name + "\n" + read + "\n+\n" + scores + "\n"
-            o[1].write(sb)
+            outputs[1].write(sb)
             # Metrics
             reads += 1
-            bases_reverse += temp_f
+            bases_reverse += temp_r
+            errors_reverse += errors
             flag_copy = True
             cumulative_score += total
         #
         if flag_copy: cumulative_copies += 1
         duplicates -= 1
     # Return
-    return [reads, bases_forward, bases_reverse, cumulative_score,
-            cumulative_copies]
+    return [reads, bases_forward, errors_forward, bases_reverse,
+            errors_reverse, cumulative_score, cumulative_copies]
 
 def Generate_Read_From_Seq(seq, phred, length, quality_settings):
     """
@@ -631,24 +642,27 @@ def Generate_Read_From_Seq(seq, phred, length, quality_settings):
     else: flag = False # Inconsistent accuracy
     # Metric
     total = 0
+    errors = 0
     # Setup
     read = ""
     scores = ""
     # Loop
     for char in seq:
         q = Custom_Random_Distribution(q1, q2, q3, True)
-        threshold = phred[q]
+        if q > 42: q = 42
+        threshold = DICT__scores_to_probs[q]
         r = Random.random()
         if r < threshold: # Match
             read += char
         else: # Mismatch
+            errors += 1
             possible = DICT__mismatches[char]
             char = Random.choice(possible)
             read += char
         scores += phred[q]
         total += q   
     # Return
-    return [read, scores, total]
+    return [read, scores, errors, total]
 
 
 
@@ -718,8 +732,7 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
                 GAMMA DISTRIBUTION:
                     ([float, float, bool])
                     A list containing the Alpha and Beta to be used for the
-                    Gamma distribution, and a flag indicating whether to
-                    flip-shift the result or not.
+                    Gamma distribution.
                 UNIFORM:
                     (list/int)
                     If @mean is 0, then @param is a list of values, one of which
@@ -747,7 +760,6 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
             r = Random.normalvariate(mean, param)
         elif method == DIST.GAMMA:
             r = Random.gammavariate(param[0], param[1])
-            if param[2]: r = -r + 2
         r = int(r+0.5)
     if must_positive:
         if r < 0: r = -r
@@ -773,8 +785,8 @@ def Generate_Name(frag_name, duplicates, orientation):
 
 
 
-def Report_Metrics(fragments, reads, bases_forward, bases_reverse,
-            cumulative_score, cumulative_copies):
+def Report_Metrics(fragments, reads, bases_forward, errors_forward,
+            bases_reverse, errors_reverse, cumulative_score, cumulative_copies):
     """
     Print a report into the command line interface of the results of running
     this program
@@ -788,9 +800,15 @@ def Report_Metrics(fragments, reads, bases_forward, bases_reverse,
     @bases_forward
             (int)
             The total number of nucleotides generated for forward reads.
+    @errors_forward
+            (int)
+            The total number of errors in the forward reads.
     @bases_reverse
             (int)
             The total number of nucleotides generated for reverse reads.
+    @errors_reverse
+            (int)
+            The total number of errors in the reverse reads.
     @cumulative_score
             (int)
             The cumulative total of the Phred scores of all the nucleotides
@@ -807,18 +825,26 @@ def Report_Metrics(fragments, reads, bases_forward, bases_reverse,
     else: reads_ = reads
     # Calculations
     avg_f = float(bases_forward)/reads_
+    avg_f_e = float(errors_forward)/reads_
     avg_r = float(bases_reverse)/reads_
+    avg_r_e = float(errors_reverse)/reads_
     total_b = bases_forward + bases_reverse
     avg_score = float(cumulative_score)/total_b
-    avg_copies = float(cumulative_copies)/reads_
+    avg_copies = float(cumulative_copies)/fragments
     # Strings
     str_frags = str(fragments) + "   "
     str_reads = str(reads) + "   "
-    str_f = str(avg_f) + "   "
-    str_r = str(avg_r) + "   "
-    str_avg_score = str(avg_score)
-    str_avg_copies = str(avg_copies)
+    str_f = str(avg_f) + "0"
+    str_f_e = str(avg_f_e) + "0"
+    str_r = str(avg_r) + "0"
+    str_r_e = str(avg_r_e) + "0"
+    str_avg_score = str(avg_score) + "0"
+    str_avg_copies = str(avg_copies) + "0"
     # Padding and formatting
+    str_f = Trim_Percentage_Str(str_f, 2)
+    str_f_e = Trim_Percentage_Str(str_f_e, 2)
+    str_r = Trim_Percentage_Str(str_r, 2)
+    str_r_e = Trim_Percentage_Str(str_r_e, 2)
     str_avg_score = Trim_Percentage_Str(str_avg_score, 2)
     str_avg_copies = Trim_Percentage_Str(str_avg_copies, 2)
     max_size = max([len(str_frags), len(str_reads), len(str_f), len(str_r),
@@ -826,12 +852,15 @@ def Report_Metrics(fragments, reads, bases_forward, bases_reverse,
     str_frags = Pad_Str(str_frags, max_size, " ", 0)
     str_reads = Pad_Str(str_reads, max_size, " ", 0)
     str_f = Pad_Str(str_f, max_size, " ", 0)
-    str_r = Pad_Str(str_fr, max_size, " ", 0)
+    str_f_e = Pad_Str(str_f_e, max_size, " ", 0)
+    str_r = Pad_Str(str_r, max_size, " ", 0)
+    str_r_e = Pad_Str(str_r_e, max_size, " ", 0)
     str_avg_score = Pad_Str(str_avg_score, max_size, " ", 0)
     str_avg_copies = Pad_Str(str_avg_copies, max_size, " ", 0)
     # Print
-    PRINT.printM(STR__metrics.format(F = str_frags, R = str_reads, A = str_f,
-            B = str_r, Q = str_avg_score, D = str_avg_copies))
+    PRINT.printM(STR__metrics.format(F = str_frags, R = str_reads, L1 = str_f,
+            E1 = str_f_e, L2 = str_r, E2 = str_r_e, Q = str_avg_score,
+            D = str_avg_copies))
 
 
 
