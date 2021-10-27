@@ -232,7 +232,7 @@ def Generate_Synthetic_Chromosomes(path_in, path_out, width, method,
     @path_out
             (str - dirpath)
             The filepath for the folder where the resultant FASTA file(s) will 
-            be  created.
+            be created.
     @width
             (int)
             The maximum number of chars in each line of the FASTA file(s).
@@ -616,7 +616,7 @@ def Validate_Folder_Path(folder_path, chr_sizes_filepath):
     Return 2 if the folder path is valid and empty but cannot be written into.
     Return 3 if the folder path is valid and the user declines to overwrite
             existing files.
-    Return 4 if the golder path is valid, but contains existing files and the
+    Return 4 if the folder path is valid, but contains existing files and the
             program is set to forbid overwriting.
     Return 5 is the folder path does not exist and cannot be created.
     Return 6 if there is a problem with the chromsome sizes file.
