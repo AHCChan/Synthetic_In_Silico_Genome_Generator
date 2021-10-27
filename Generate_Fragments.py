@@ -886,7 +886,7 @@ def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
-    # Validate mandatroy inputs
+    # Validate mandatory inputs
     path_in = inputs.pop(0)
     valid = Validate_FASTA_Folder(path_in)
     if valid == 1:
@@ -1094,7 +1094,7 @@ def Validate_FASTA_Folder(dirpath):
         if len(files) > 0: return 0
         return 1
     except:
-        return 2    
+        return 2
 
 
 
