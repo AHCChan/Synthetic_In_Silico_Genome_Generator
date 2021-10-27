@@ -308,6 +308,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
     current_index = -1
     post_ex_index = -1
     non_direction_flag = False # For when an entry has no +/-
+    write_index = -1
     
     t = Table_Reader(input_coordinates)
     t.Set_Delimiter("\t")
@@ -334,7 +335,12 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             current_chr_name = chr_name
             while not f.End():
                 f.Read()
+                current_index += 1
+                if write_index == DEFAULT__width:
+                    w.write("\n")
+                    write_index = 0
                 w.write(f.Get())
+                write_index += 1
                 basepairs_original += 1
             f.Close()
             chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
@@ -347,19 +353,28 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             old_end = -1
             current_index = 0
             post_ex_index = 0
+            write_index = 0
         # Non overlap
         if start == old_end and overlap:
             overlaps += 1
         else:
             f.Read()
             current_index += 1
+            if write_index == DEFAULT__width:
+                w.write("\n")
+                write_index = 0
             w.write(f.Get())
+            write_index += 1
             post_ex_index += 1
             basepairs_original += 1
         old_end = end
         # Read along chromosome and add
         while current_index < start:
+            if write_index == DEFAULT__width:
+                w.write("\n")
+                write_index = 0
             w.write(f.Get())
+            write_index += 1
             post_ex_index += 1
             basepairs_original += 1
             f.Read()
@@ -383,8 +398,10 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         path = output_sequences + "/" + ID + FILEMOD__FASTA
         o = open(path, "w")
         o.write(">" + ID + "\t" + "\t".join(elements) + "\n")
-        o.write(sb)
-        o.write("\n")
+        while len(sb) > DEFAULT__width:
+            o.write(sb[:DEFAULT__width] + "\n")
+            sb = sb[DEFAULT__width:]
+        if sb: o.write(sb + "\n")
         o.close()
         c.write(chr_name + "\t" + str(post_ex_index) + "\t")
         c.write(str(post_ex_end) + "\t" + direction + "\t")
@@ -397,7 +414,11 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
     
     while not f.End():
         f.Read()
+        if write_index == DEFAULT__width:
+            w.write("\n")
+            write_index = 0
         w.write(f.Get())
+        write_index += 1
         basepairs_original += 1
     
     w.close()
