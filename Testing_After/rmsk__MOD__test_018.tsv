@@ -1,0 +1,6 @@
+chr1	1	5	+	TelomereF	SimpleRepeat	Placeholder3
+chr1	161	240	+	PseudoT1	PseudoTransposon	Placeholder3
+chr1	401	480	-	Gs	SimpleRepeat	Placeholder3
+chr1	636	640	-	TelomereR	SimpleRepeat	Placeholder3
+chr2	141	180	-	PseudoT2	PseudoTransposon	Placeholder3
+chr2	180	240	+	CGs	SimpleRepeat	Placeholder3

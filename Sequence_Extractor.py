@@ -118,12 +118,12 @@ EXAMPLES:
     
     python27 Sequence_Extractor.py Path/GenomeFolder rmsk__MOD.tsv -o
             Path/TransposonlessGenome Path/Transposons
-            Path/TransposonCoordinates.tsv
+            Path/TransposonCoordinates.tsv -d Y
 
 USAGE:
     
     python27 Sequence_Extractor.py <genome_folder> <target_coordinates_table>
-            [-o <edited_genome_folder> <extracted_sequences_folder>
+            [-d Y|N] [-o <edited_genome_folder> <extracted_sequences_folder>
             <coordinates_table>]
 """
 
@@ -148,8 +148,8 @@ PRINT_METRICS = True
 
 DIRMOD__SEQS = "__EXTRACTS"
 DIRMOD__EDIT = "__EXCISED"
+FILEMOD__COORDS = "__NEW_COORDS.tsv"
 FILEMOD__FASTA = ".fa"
-FILEMOD__OUTPUT = "__COORDS_TABLE.tsv"
 
 # For name string
 ID_BASE = "TE_"
@@ -161,6 +161,8 @@ ID_SIZE = 9
 "NOTE: altering these will not alter the values displayed in the HELP DOC"
 
 DEFAULT__width = 80
+
+DEFAULT__overlap = False
 
 
 
@@ -188,6 +190,10 @@ from Table_File_Reader import *
 STR__use_help = "\nUse the -h option for help:\n\t python "\
 "Sequence_Extractor.py -h"
 
+STR__error_no_FASTA = """
+ERROR: No FASTA files detected in:
+    {f}"""
+
 
 
 STR__metrics = """
@@ -204,6 +210,15 @@ STR__metrics = """
 STR__Extract_begin = "\nRunning Extract_Sequences..."
 
 STR__Extract_complete = "\nExtract_Sequences successfully finished."
+
+
+
+STR__unexpected_failure = "\nProgram exited with an unexpected error."
+
+STR__overwrite_confirm_2 = """
+Files may exist in destination folder:
+    {f}
+Do you wish to overwrite them in the event of a naming clash? (y/n): """
 
 
 
@@ -483,13 +498,88 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
+    # Validate mandatory inputs
+    path_in_folder = inputs.pop(0)
+    valid = Validate_FASTA_Folder(path_in_folder)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    elif valid == 2:
+        PRINT.printE(STR__error_no_FASTA.format(f = path_in_folder))
+        PRINT.printE(STR__use_help)
+        return 1
+    path_in_file = inputs.pop(0)
+    valid = Validate_Read_Path(path_in_file)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read.format(f = path_in))
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Set up rest of the parsing
+    overlap = DEFAULT__overlap
+    path_out_genome = path_in_folder + DIRMOD__EDIT
+    path_out_seqs = path_in_folder + DIRMOD__SEQS
+    path_out_coords = path_in_folder + FILEMOD__COORDS
+    
+    # Validate optional inputs (except output path)
+    while inputs:
+        arg = inputs.pop(0)
+        try: # Second argument
+            arg2 = inputs.pop(0)
+        except:
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
+            return 1
+        if arg == "-d": # Duplicate overlap nucleotides
+            overlap = Validate_Bool(arg2)
+            if overlap == None:
+                PRINT.printE(STR__invalid_bool)
+                PRINT.printE(STR__use_help)
+        elif arg == "-o": # Output files
+            try: # Third and fourth argument
+                arg3 = inputs.pop(0)
+                arg4 = inputs.pop(0)
+            except:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+            path_out_genome = arg2
+            path_out_seqs = arg3
+            path_out_coords = arg4
+
+    # Validate output paths
+    valid_out_1 = Validate_Write_Path__FOLDER(path_out_genome)
+    valid_out_2 = Validate_Write_Path__FOLDER(path_out_seqs)
+    valids = [valid_out_1, valid_out_2]
+    if valid_out_1 == 0 and valid_out_2 == 0: pass
+    elif valid_out_1 == 1 and valid_out_1 == 1:
+        PRINT.printM(STR__overwrite_accept)
+    else:
+        if 2 in valids: PRINT.printE(STR__IO_error_write_folder_cannot)
+        elif 3 in valids: PRINT.printE(STR__overwrite_decline)
+        elif 4 in valids: PRINT.printE(STR__IO_error_write_folder_forbid)
+        elif 5 in valids:
+            PRINT.printE(STR__IO_error_write_folder_nonexistent)
+        elif 6 in valids: PRINT.printE(STR__IO_error_write_unexpected)
+        return 1
+    valid_out = Validate_Write_Path__FILE(path_out_coords)
+    if valid_out == 2: return 0
+    if valid_out == 3:
+        PRINT.printE(STR__IO_error_write_forbid)
+        return 1
+    if valid_out == 4:
+        PRINT.printE(STR__IO_error_write_unable)
+        return 1
+    
     # Run program
-    exit_state = Extract_Sequences() # TODO
+    exit_state = Extract_Sequences(path_in_folder, path_in_file, overlap,
+            path_out_genome, path_out_seqs, path_out_coords)
     
     # Exit
     if exit_state == 0: return 0
     else:
-        if exit_state == 1: PRINT.printE(STR__read_file_invalid)
+        if exit_state == 1: PRINT.printE(STR__unexpected_failure)
         PRINT.printE(STR__use_help)
         return 1
     
@@ -514,80 +604,7 @@ def Validate_FASTA_Folder(dirpath):
 
 
 
-def Validate_Folder_Path(folder_path, chr_sizes_filepath):
-    """
-    Validates the writepath of the output folder.
-    Attempts to create the folder if it does not exist.
-
-    Assumes that @chr_sizes_filepath is a valid filepath.
-    
-    Return 0 if the folder path is valid and empty* and can be written into.
-    Return 1 if the folder path is valid and the user decides to overwrite
-            existing files.
-    Return 2 if the folder path is valid and empty but cannot be written into.
-    Return 3 if the folder path is valid and the user declines to overwrite
-            existing files.
-    Return 4 if the golder path is valid, but contains existing files and the
-            program is set to forbid overwriting.
-    Return 5 is the folder path does not exist and cannot be created.
-    Return 6 if there is a problem with the chromsome sizes file.
-    Return 7 for unexpected errors.
-
-    * Empty - Not necessarily empty, but does not containing any naming
-            conflicts with the names in the chromosome sizes file.
-    
-    Validate_Folder_Path(str, str) -> int
-    """
-    # Create folder if it does not exist
-    if not os.path.isdir(folder_path):
-        try:
-            os.mkdir(folder_path)
-        except:
-            return 5
-    # Create a random file for testing purposes
-    random_name = str(Random.random())
-    random_path = folder_path + "\\" + random_name
-    while os.path.exists(random_path):
-        random_name = str(Random.random())
-        random_path = folder_path + "\\" + random_name
-    # Attempt to write to the folder
-    try:
-        f = open(random_path, "w")
-    except:
-        return 2
-    # Unexpected errors
-    try:
-        f.close()
-        os.remove(random_path)
-    except:
-        return 7
-    # OVERWRITE TESTING
-    FLAG_exists = 0
-    f = open(chr_sizes_filepath, "U")
-    line = f.readline()
-    while line:
-        values = line.split("\t")
-        temp_path = folder_path + "\\" + values[0] + FILEMOD__FASTA
-        # See if file already exists
-        try:
-            exist = os.path.exists(temp_path)
-        except:
-            return 6
-        # If file already exists
-        if exist:
-            FLAG_exists = 1
-        line = f.readline()
-    f.close()
-    # Return
-    if FLAG_exists:
-        if WRITE_PREVENT: return 4
-        if WRITE_CONFIRM:
-            confirm = raw_input(STR__overwrite_confirm.format(f=folder_path))
-            if confirm not in LIST__yes: return 3        
-        return 1
-    return 0
-
-def Validate_Write_Path(filepath):
+def Validate_Write_Path__FILE(filepath):
     """
     Validates the filepath of the output file.
     Return 0 if the filepath is writtable.
@@ -621,6 +638,61 @@ def Validate_Write_Path(filepath):
         return 0 # Overwriting existing file is possible
     except:
         return 4 # Unable to write to specified filepath
+
+def Validate_Write_Path__FOLDER(folder_path):
+    """
+    Validates the writepath of the output folder.
+    Attempts to create the folder if it does not exist.
+    
+    Return 0 if the folder path is valid and empty and can be written into.
+    Return 1 if the folder path is valid and the user decides to overwrite
+            existing files.
+    Return 2 if the folder path is valid and empty but cannot be written into.
+    Return 3 if the folder path is valid and the user declines to overwrite
+            existing files.
+    Return 4 if the folder path is valid, but contains existing files and the
+            program is set to forbid overwriting.
+    Return 5 is the folder path does not exist and cannot be created.
+    Return 6 for unexpected errors.
+    
+    Validate_Folder_Path(str, str) -> int
+    """
+    new_dir = False
+    # Create folder if it does not exist
+    if not os.path.isdir(folder_path):
+        try:
+            os.mkdir(folder_path)
+        except:
+            return 5
+        new_dir = True
+    
+    # Create a random file for testing purposes
+    random_name = str(Random.random())
+    random_path = folder_path + "\\" + random_name
+    while os.path.exists(random_path):
+        random_name = str(Random.random())
+        random_path = folder_path + "\\" + random_name
+    # Attempt to write to the folder
+    try:
+        f = open(random_path, "w")
+    except:
+        return 2
+    # Unexpected errors
+    try:
+        f.close()
+        os.remove(random_path)
+    except:
+        return 6
+    
+    if new_dir: return 0
+    
+    # OVERWRITE TESTING
+    FLAG_exists = 0
+    if WRITE_PREVENT: return 4
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm_2.format(f=folder_path))
+        if confirm not in LIST__yes: return 3        
+    return 1
 
 
 

@@ -29,4 +29,6 @@ C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o
 
 C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_015_r1.fq x -r 75 0
 
+C:\Python27\python.exe ..\Sequence_Extractor.py chr_sizes__test_017 rmsk__MOD__test_017.tsv 
 
+C:\Python27\python.exe ..\Sequence_Extractor.py chr_sizes__test_017 rmsk__MOD__test_018.tsv -d Y -o chr_sizes__test_018__EDITED chr_sizes__test_018__SEQS chr_sizes__test_018__NEW.tsv
