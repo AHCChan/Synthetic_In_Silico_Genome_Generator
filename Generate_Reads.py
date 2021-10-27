@@ -931,7 +931,7 @@ def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
-    # Validate mandatroy inputs
+    # Validate mandatory inputs
     path_in = inputs.pop(0)
     valid = Validate_Read_Path(path_in)
     if valid == 1:
