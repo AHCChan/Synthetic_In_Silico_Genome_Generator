@@ -263,6 +263,11 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             (str - filepath)
             The file containg the genomic coordinates and auxiliary information
             of the DNA sequences to be excised.
+    @overlap
+            (bool)
+            Whether or not to duplicate nucleotides when the coordinates of
+            neighboring genetic elements overlap. (Only applies to the single
+            nucleotide at the end of the preceding genetic element.)
     @output_genome
             (str - dirpath)
             The post-excision version of the original template from which the
@@ -485,7 +490,7 @@ def Report_Metrics(chromosomes, basepairs_original, basepairs_excised,
     average_ex_size = basepairs_excised/float(seqs_excised)
     average_ex_size = str(average_ex_size) + "0"
     average_ex_size = Trim_Percentage_Str(average_ex_size, 2)
-    print(STR__metrics.format(A = chromosomes, B = basepairs_original,
+    PRINT.printM(STR__metrics.format(A = chromosomes, B = basepairs_original,
             C = basepairs_excised, D = overlaps, E = remaining,
             F = seqs_excised, G = average_ex_size))
 
