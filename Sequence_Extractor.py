@@ -406,7 +406,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         o.Close()
         c.write(chr_name + "\t" + str(post_ex_index) + "\t")
         c.write(str(post_ex_end) + "\t" + direction + "\t")
-        c.write(ID + "\tFILE:" + ID)
+        c.write(ID + "\tFILE:" + ID + "\t")
         c.write("\t".join(extras) + "\n")
     PRINT.printP(STR__Extract_complete)
     
