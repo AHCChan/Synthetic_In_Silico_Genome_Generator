@@ -382,7 +382,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             chromosomes += 1
             old_end = -1
             current_index = 0
-            post_ex_index = 0
+            post_ex_index = 1
         # Non overlap
         if start == old_end and overlap:
             overlaps += 1
