@@ -355,6 +355,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         elements = t.Get_Current()
         chr_name = elements[0]
         start = int(elements[1])
+        start_ = start - 1
         end = int(elements[2])
         size = end-start+1
         direction = elements[3]
@@ -390,7 +391,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             basepairs_excised += 1
         old_end = end
         # Read along chromosome and add, to new template
-        while current_index + 1 < start:
+        while current_index < start_:
             f.Read()
             current_index += 1
             w.Write_1(f.Get())
