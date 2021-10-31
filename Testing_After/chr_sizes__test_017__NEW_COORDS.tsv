@@ -1,4 +1,4 @@
-chr1	161	240	+	TE_000000001	FILE:TE_000000001PseudoT1	PseudoTransposon	Placeholder3
-chr1	322	401	-	TE_000000002	FILE:TE_000000002Gs	SimpleRepeat	Placeholder3
-chr2	141	180	-	TE_000000003	FILE:TE_000000003PseudoT2	PseudoTransposon	Placeholder3
-chr2	142	202	+	TE_000000004	FILE:TE_000000004CGs	SimpleRepeat	Placeholder3
+chr1	160	239	+	TE_000000001	FILE:TE_000000001	PseudoT1	PseudoTransposon	Placeholder3
+chr1	320	399	-	TE_000000002	FILE:TE_000000002	Gs	SimpleRepeat	Placeholder3
+chr2	140	179	-	TE_000000003	FILE:TE_000000003	PseudoT2	PseudoTransposon	Placeholder3
+chr2	140	200	+	TE_000000004	FILE:TE_000000004	CGs	SimpleRepeat	Placeholder3

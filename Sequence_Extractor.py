@@ -35,7 +35,7 @@ USAGE:
     
     python27 Sequence_Extractor.py <genome_folder> <target_coordinates_table>
             [-d Y|N] [-o <edited_genome_folder> <extracted_sequences_folder>
-            <coordinates_table>]
+            <coordinates_table> <chr_sizes_file>]
 
 
 
@@ -103,6 +103,14 @@ OPTIONAL:
         determining its genomic sequence, including which original excised
         sequence is being used as the template, as well as any modifications
         which were subsequently made to said template.
+    
+    chr_sizes_file
+        
+        (DEFAULT path generation available)
+        
+        The filepath of the output chromosome sizes file. This file may be
+        necessary when coordinates of the genetic elements are altered to
+        simulate "transposition" or "duplication".
 
 
 
@@ -118,13 +126,13 @@ EXAMPLES:
     
     python27 Sequence_Extractor.py Path/GenomeFolder rmsk__MOD.tsv -o
             Path/TransposonlessGenome Path/Transposons
-            Path/TransposonCoordinates.tsv -d Y
+            Path/TransposonCoordinates.tsv Path/NewChrSizes.tsv -d Y
 
 USAGE:
     
     python27 Sequence_Extractor.py <genome_folder> <target_coordinates_table>
             [-d Y|N] [-o <edited_genome_folder> <extracted_sequences_folder>
-            <coordinates_table>]
+            <coordinates_table> <chr_sizes_file>]
 """
 
 NAME = "Sequence_Extractor.py"
@@ -149,6 +157,7 @@ PRINT_METRICS = True
 DIRMOD__SEQS = "__EXTRACTS"
 DIRMOD__EDIT = "__EXCISED"
 FILEMOD__COORDS = "__NEW_COORDS.tsv"
+FILEMOD__SIZES = "__NEW_SIZES.tsv"
 FILEMOD__FASTA = ".fa"
 
 # For name string
@@ -245,7 +254,7 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 # Functions ####################################################################
 
 def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
-            output_sequences, output_coordinates):
+            output_sequences, output_coordinates, output_chr_sizes):
     """
     Extract DNA sequences from the DNA template (usually a genome or genome-like
     biological entity) according to the input coordinates, and output the
@@ -290,6 +299,9 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             These changes are listed in a way which is fairly human-readable,
             and without the need to create multiple folders containing highly
             similar information.
+    @outpust_chr_sizes
+            (str - filepath)
+            The file containing the new chromosome sizes of [output_genome].
     
     Return a value of 0 if the function runs successfully.
     Return a value of 1 if there is a problem accessing the data or if there are
@@ -314,11 +326,14 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
     current_index = -1
     post_ex_index = -1
     non_direction_flag = False # For when an entry has no +/-
+    sb = ""
+    prev_n = ""
     
     t = Table_Reader(input_coordinates)
     t.Set_Delimiter("\t")
     
     c = open(output_coordinates, "w")
+    s = open(output_chr_sizes, "w")
     w = Width_File_Writer()
     w.Overwrite_Allow()
     w.Set_Width(DEFAULT__width)
@@ -346,13 +361,17 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         extras = elements[4:]
         # New chromosome
         if chr_name != current_chr_name:
-            current_chr_name = chr_name
+            # Finish up previous chromosome
             while not f.End():
                 f.Read()
                 current_index += 1
                 w.Write_1(f.Get())
                 basepairs_original += 1
             f.Close()
+            if current_chr_name:
+                s.write(current_chr_name + "\t" + str(current_index) + "\n")
+            # New chromosome
+            current_chr_name = chr_name
             chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
             f.Open(chr_file_path)
             chr_write_path = output_genome + "\\" + chr_name + FILEMOD__FASTA
@@ -364,32 +383,28 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             old_end = -1
             current_index = 0
             post_ex_index = 0
-            write_index = 0
         # Non overlap
         if start == old_end and overlap:
             overlaps += 1
-        else:
-            f.Read()
-            current_index += 1
-            w.Write_1(f.Get())
-            post_ex_index += 1
-            basepairs_original += 1
+            sb = prev_n
+            basepairs_excised += 1
         old_end = end
-        # Read along chromosome and add
-        while current_index < start:
+        # Read along chromosome and add, to new template
+        while current_index + 1 < start:
+            f.Read()
+            current_index += 1
             w.Write_1(f.Get())
             post_ex_index += 1
             basepairs_original += 1
-            f.Read()
-            current_index += 1
-        sb = f.Get()
-        basepairs_excised += 1
+        # Read along chromosome and add, to sequences
         while current_index < end:
             f.Read()
             current_index += 1
             sb += f.Get()
-            basepairs_original += 1
             basepairs_excised += 1
+            basepairs_original += 1
+        # Last chromosome in sequence
+        prev_n = f.Get()
         # Direction
         if direction == "-": sb = Get_Complement(sb, True)
         elif direction == "+": pass
@@ -408,6 +423,8 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         c.write(str(post_ex_end) + "\t" + direction + "\t")
         c.write(ID + "\tFILE:" + ID + "\t")
         c.write("\t".join(extras) + "\n")
+        # Reset stringbuilder
+        sb = ""
     PRINT.printP(STR__Extract_complete)
     
     # Close up
@@ -417,6 +434,8 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         f.Read()
         w.Write_1(f.Get())
         basepairs_original += 1
+    s.write(current_chr_name + "\t" + str(current_index) + "\n")
+    s.close()
     
     w.Close()
     f.Close()
@@ -539,6 +558,7 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
     path_out_genome = path_in_folder + DIRMOD__EDIT
     path_out_seqs = path_in_folder + DIRMOD__SEQS
     path_out_coords = path_in_folder + FILEMOD__COORDS
+    path_out_sizes = path_in_folder + FILEMOD__SIZES
     
     # Validate optional inputs (except output path)
     while inputs:
@@ -558,6 +578,7 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
             try: # Third and fourth argument
                 arg3 = inputs.pop(0)
                 arg4 = inputs.pop(0)
+                arg5 = inputs.pop(0)
             except:
                 PRINT.printE(STR__insufficient_inputs)
                 PRINT.printE(STR__use_help)
@@ -565,6 +586,7 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
             path_out_genome = arg2
             path_out_seqs = arg3
             path_out_coords = arg4
+            path_out_sizes = arg5
 
     # Validate output paths
     valid_out_1 = Validate_Write_Path__FOLDER(path_out_genome)
@@ -575,24 +597,30 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
         PRINT.printM(STR__overwrite_accept)
     else:
         if 2 in valids: PRINT.printE(STR__IO_error_write_folder_cannot)
-        elif 3 in valids: PRINT.printE(STR__overwrite_decline)
-        elif 4 in valids: PRINT.printE(STR__IO_error_write_folder_forbid)
-        elif 5 in valids:
+        if 3 in valids: PRINT.printE(STR__overwrite_decline)
+        if 4 in valids: PRINT.printE(STR__IO_error_write_folder_forbid)
+        if 5 in valids:
             PRINT.printE(STR__IO_error_write_folder_nonexistent)
-        elif 6 in valids: PRINT.printE(STR__IO_error_write_unexpected)
+        if 6 in valids: PRINT.printE(STR__IO_error_write_unexpected)
         return 1
-    valid_out = Validate_Write_Path__FILE(path_out_coords)
-    if valid_out == 2: return 0
-    if valid_out == 3:
-        PRINT.printE(STR__IO_error_write_forbid)
-        return 1
-    if valid_out == 4:
-        PRINT.printE(STR__IO_error_write_unable)
+    valid_out_1 = Validate_Write_Path__FILE(path_out_coords)
+    valid_out_2 = Validate_Write_Path__FILE(path_out_sizes)
+    valids = [valid_out_1, valid_out_2]
+    if valid_out_1 == 0 and valid_out_2 == 0: pass
+    elif valid_out_1 == 1 and valid_out_1 == 1:
+        PRINT.printM(STR__overwrite_accept)
+    else:
+        if 2 in valids:
+            PRINT.printE(STR__overwrite_decline)
+        if 3 in valids:
+            PRINT.printE(STR__IO_error_write_forbid)
+        if 4 in valids:
+            PRINT.printE(STR__IO_error_write_unable)
         return 1
     
     # Run program
     exit_state = Extract_Sequences(path_in_folder, path_in_file, overlap,
-            path_out_genome, path_out_seqs, path_out_coords)
+            path_out_genome, path_out_seqs, path_out_coords, path_out_sizes)
     
     # Exit
     if exit_state == 0: return 0
