@@ -310,7 +310,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
     Return a value of 3 if there is a problem during the sequence extraction
             process.
     
-    Extract_Sequences(str, str, str, str, str) -> int
+    Extract_Sequences(str, str, bool, str, str, str, str) -> int
     """
     # Setup reporting
     chromosomes = 0
