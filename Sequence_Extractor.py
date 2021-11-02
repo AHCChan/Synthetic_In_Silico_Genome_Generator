@@ -65,7 +65,7 @@ MANDATORY:
         
         This information will be retained as the first four columns of the
         output Coordinates Table file. The contents of any additional columns
-        will be also be retained in the seventh column and beyond of the output
+        will also be retained in the seventh column and beyond of the output
         Coordinates Table file.
 
 OPTIONAL:
