@@ -271,8 +271,8 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             "genome".
     @input_coordinates
             (str - filepath)
-            The file containg the genomic coordinates and auxiliary information
-            of the DNA sequences to be excised.
+            The file containing the genomic coordinates and auxiliary
+            information of the DNA sequences to be excised.
     @overlap
             (bool)
             Whether or not to duplicate nucleotides when the coordinates of
