@@ -17,6 +17,7 @@ USAGE:
     
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
             <sequences_folder> [-o <output_folder> <output_coordinates_table]
+            [-a <window_min> <window_max> <errors_max> Y|N]
 
 
 
@@ -119,6 +120,35 @@ OPTIONAL:
         determining its genomic sequence, including which original excised
         sequence is being used as the template, as well as any modifications
         which were subsequently made to said template.
+    
+    window_min
+        
+        (DEFAULT: 4)
+        
+        The minimum window size allowed for overlap-joins and
+        overlap-duplicates.
+
+    window_max
+        
+        (DEFAULT: 100)
+        
+        The maximum window size allowed for overlap-joins and
+        overlap-duplicates.
+
+    errors_max
+        
+        (DEFAULT: 0)
+        
+        The maximum number of mismatches permitted for two sequences to qualify
+        for an overlap-join or an overlap-duplicate.
+
+    Y|N
+        
+        (DEFAULT: 0)
+        
+        Whether or not the largest qualifying window size will be used for
+        overlap-joins and overlap-duplicates. If set to "N", the smallest
+        qualifying window will be used instead.
 
 
 
@@ -130,6 +160,7 @@ USAGE:
     
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
             <sequences_folder> [-o <output_folder> <output_coordinates_table]
+            [-a <window_min> <window_max> <errors_max> Y|N]
 """
 
 NAME = "Sequence_Extractor.py"
@@ -161,6 +192,11 @@ FILEMOD__FASTA = ".fa"
 "NOTE: altering these will not alter the values displayed in the HELP DOC"
 
 DEFAULT__width =  = 80
+
+DEFAULT__overhang_min = 4
+DEFAULT__overhang_max = 100
+DEFAULT__overhang_mismatches = 0
+DEFAULT__overhang_largest = True
 
 
 
@@ -242,7 +278,8 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 # Functions ####################################################################
 
 def Insert_Sequences(input_genome, input_coordinates, input_sequences,
-            output_genome, output_coordinates):
+            output_genome, output_coordinates, overhang_min, overhang_max,
+            error_max, highest_preferred):
     """
     Assemble and insert DNA sequences into the DNA template (usually a genome or
     genome-like biological entity) according to the sequence assembly
@@ -326,7 +363,24 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
     @output_coordinates
             (str - filepath)
             The file containg the post-insertion coordinates and other details
-            of the isnerted sequences. 
+            of the inserted sequences.
+    @overhang_min
+            (int)
+            The minimum window size allowed for overlap-joins and
+            overlap-duplicates.
+    @overhang_max
+            (int)
+            The maximum window size allowed for overlap-joins and
+            overlap-duplicates.
+    @error_max
+            (int)
+            The maximum number of mismatches permitted for two sequences to
+            qualify for an overlap-join or an overlap-duplicate.
+    @highest_preferred
+            (bool)
+            Whether or not the largest qualifying window size will be used for
+            overlap-joins and overlap-duplicates. If False, the smallest
+            qualifying window will be used instead.
     
     Return a value of 0 if the function runs successfully.
     Return a value of 1 if there is a problem accessing the data or if there are
@@ -335,7 +389,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
     Return a value of 3 if there is a problem during the sequence extraction
             process.
     
-    Insert_Sequences(str, str, str, str, str) -> int
+    Insert_Sequences(str, str, str, str, str, int, int, int, bool) -> int
     """
     # Setup reporting
     
