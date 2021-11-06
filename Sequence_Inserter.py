@@ -213,6 +213,7 @@ import _Controlled_Print as PRINT
 from _Command_Line_Parser import *
 
 from NSeq_Match import *
+from ECSASS_Parser import *
 
 from Chr_FASTA_File_Reader import *
 from Table_File_Reader import *
@@ -278,8 +279,8 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 # Functions ####################################################################
 
 def Insert_Sequences(input_genome, input_coordinates, input_sequences,
-            output_genome, output_coordinates, overhang_min, overhang_max,
-            error_max, highest_preferred):
+            output_genome, output_coordinates, output_chr_sizes, overhang_min,
+            overhang_max, error_max, highest_preferred):
     """
     Assemble and insert DNA sequences into the DNA template (usually a genome or
     genome-like biological entity) according to the sequence assembly
@@ -288,7 +289,8 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
     @input_genome
             (str - dirpath)        
             The input folder containing the template FASTA file(s). Each FASTA
-            file is assumed to only contain one DNA sequence per file, similar to chromosomal FASTA files.
+            file is assumed to only contain one DNA sequence per file, similar
+            to chromosomal FASTA files.
     @input_coordinates
             (str - filepath)
             The input file containing the coordinates for sequences to be
@@ -364,14 +366,19 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
             (str - filepath)
             The file containg the post-insertion coordinates and other details
             of the inserted sequences.
+    @output_chr_sizes
+            (str - filepath)
+            The output file containing the new chromosome sizes.
     @overhang_min
             (int)
             The minimum window size allowed for overlap-joins and
-            overlap-duplicates.
+            overlap-duplicates. Assumed to be smaller than, or equal to
+            [overhang_max].
     @overhang_max
             (int)
             The maximum window size allowed for overlap-joins and
-            overlap-duplicates.
+            overlap-duplicates. Assumed to be greater than, or equal to
+            [overhang_min].
     @error_max
             (int)
             The maximum number of mismatches permitted for two sequences to
@@ -392,17 +399,159 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
     Insert_Sequences(str, str, str, str, str, int, int, int, bool) -> int
     """
     # Setup reporting
+    chromosomes = 0
+    basepairs_original = 0
+    seqs_inserted = 0
+    basepairs_inserted = 0
+    
+    irregular_direction = False
+    
+    # Pre-calculate
+    if highest_preferred: window_range = range(overhang_max, overhang_min, -1)
+    else: window_range = range(overhang_min, overhang_max)
+    
+    # Setup the I/O
+    current_chr_name = ""
+    f = Chr_FASTA_Reader() # Chromosome reader
+    original_index = -1
+    total_index = -1
+    
+    t = Table_Reader(input_coordinates) # Coordinates table file reader
+    t.Set_Delimiter("\t")
+    
+    o = Width_File_Writer() # Write new chromosomes
+    o.Overwrite_Allow()
+    o.Set_Width(DEFAULT__width)
+    o.Set_Newline("\n")
+    o.Toggle_Printing_M(False)
+    
+    s = open(output_chr_sizes, "w") # New chromosome sizes
     
     # Main loop
     PRINT.printP(STR__Insert_begin)
+    t.Open()
+    while not t.End():
+        seqs_inserted += 1
+        # Read
+        t.Read()
+        elements = t.Get_Current()
+        chr_name = elements[0]
+        start = int(elements[1])
+        start_ = start -1
+        end = int(elements[2])
+        size = end-start+1
+        direction = elements[3]
+        ECSASS_seq = elements[5]
+        retain = elements[4:]
+        # New chromosome
+        if chr_name != current_chr_name:
+            # Finish up previous chromosome
+            while not f.End():
+                f.Read()
+                total_index += 1
+                o.Write_1(f.Get())
+                basepairs_original += 1
+            f.Close()
+            o.Close()
+            if current_chr_name:
+                s.write(current_chr_name + "\t" + str(total_index) + "\n")
+            # New chromosome - reading
+            current_chr_name = chr_name
+            chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
+            f.Open(chr_file_path)
+            # New chromosome - writing
+            chr_write_path = output_genome + "\\" + chr_name + FILEMOD__FASTA
+            o.Open(chr_write_path)
+            o.Write_F(">" + f.Get_Name())
+            o.Newline()
+            # Others
+            chromosomes += 1
+            original_index = 0
+            total_index = 0
+        # Copy until insertion point
+        while original_index < start_:
+            f.Read()
+            original_index += 1
+            total_index += 1
+            o.Write_1(f.Get())
+        # New sequence
+        seq = Parse_ECSASS(ECSASS_seq)
+        if direction == "-": seq = Get_Complement(seq)
+        elif direction == "+": pass
+        else: irregular_direction = True
+        length = len(seq)
+        total_start = str(total_index)
+        total_end = str(total_index + length - 1)
+        # Insert sequence
+        o.Write(seq)
+        t.write(chr_name + "\t" + total_start + "\t" + total_end + "\t" +
+                "\t".join(retain) + "\n")
+        total_index += size
+            
     PRINT.printP(STR__Insert_complete)
     
     # Close up
+    t.Close()
+    
+    while not f.End():
+        f.Read()
+        total_index += 1
+        o.Write_1(f.Get())
+        basepairs_original += 1
+    f.Close()
+    o.Close()
+    
+    if current_chr_name:
+        s.write(current_chr_name + "\t" + str(total_index) + "\n")
+    s.close()
     
     # Reporting
-
+    Report_Metrics(chromosomes, basepairs_original, seqs_inserted,
+            basepairs_inserted, irregular_direction)
+    
     # Wrap up
     return 0
+
+def Get_Chr_File_Path(genome_folder_path, chr_name):
+    """
+    Return the file path to the Chromosomal FASTA file with [chr_name] as its
+    name from the directory [genome_folder_path].
+    Return an empty string if no matching file name is found.
+    """
+    names = os.listdir(genome_folder_path)
+    for name in names:
+        first = name.split(".")[0]
+        if first == chr_name:
+            filepath = genome_folder_path + "\\" + name
+            return filepath
+    return ""
+
+def Report_Metrics(chromosomes, basepairs_original, seqs_inserted,
+            basepairs_inserted, irregular_direction):
+    """
+    Print a report into the command line interface of the metrics of the
+    operation.
+    
+    @chromosomes
+            (int)
+            The number of chromosomes which were processed.
+    @basepairs_original
+            (int)
+            The number of basepairs in the original chromosomes.
+    @seqs_inserted
+            (int)
+            The number of sequences inserted into the chromosomes.
+    @basepairs_inserted
+            (int)
+            The number of basepairs inserted into the chromosomes.
+    @irregular_direction
+            (bool)
+            Whether or not a directionality symbol occured in the file which was
+            not either a "+" or a "-".
+    
+    Report_Metrics(int, int, int, int, int) -> None
+    """
+    pass
 
 
 
