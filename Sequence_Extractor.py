@@ -496,7 +496,7 @@ def Report_Metrics(chromosomes, basepairs_original, basepairs_excised,
             (int)
             The number of sequences which were excised.
     
-    Report_Metrics(list<[int,int]>) -> None
+    Report_Metrics(int, int, int, int, int) -> None
     """
     remaining = basepairs_original - basepairs_excised + overlaps
     average_ex_size = basepairs_excised/float(seqs_excised)
