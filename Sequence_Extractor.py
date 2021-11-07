@@ -156,8 +156,8 @@ PRINT_METRICS = True
 
 DIRMOD__SEQS = "__EXTRACTS"
 DIRMOD__EDIT = "__EXCISED"
-FILEMOD__COORDS = "__NEW_COORDS.tsv"
-FILEMOD__SIZES = "__NEW_SIZES.tsv"
+FILEMOD__COORDS = "__POST_INSERT_COORDS.tsv"
+FILEMOD__SIZES = "__POST_INSERT_SIZES.tsv"
 FILEMOD__FASTA = ".fa"
 
 # For name string
@@ -608,6 +608,11 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
             path_out_seqs = arg3
             path_out_coords = arg4
             path_out_sizes = arg5
+        else: # Invalid
+            arg = Strip_X(arg)
+            PRINT.printE(STR__invalid_argument.format(s = arg))
+            PRINT.printE(STR__use_help)
+            return 1
 
     # Validate output paths
     valid_out_1 = Validate_Write_Path__FOLDER(path_out_genome)
