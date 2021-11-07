@@ -16,8 +16,9 @@ precursor.
 USAGE:
     
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
-            <sequences_folder> [-o <output_folder> <output_coordinates_table]
-            [-a <window_min> <window_max> <errors_max> Y|N]
+            <sequences_folder> [-o <output_folder> <output_coordinates_table>
+            <output_chr_sizes_file>] [-a <window_min> <window_max>
+            <errors_max> Y|N]
 
 
 
@@ -121,6 +122,13 @@ OPTIONAL:
         sequence is being used as the template, as well as any modifications
         which were subsequently made to said template.
     
+    output_chr_sizes_file
+        
+        (DEFAULT path generation available)
+        
+        The filepath of the output chromosome sizes file, which lists all the
+        chromosomes and their post-insertion sizes.
+    
     window_min
         
         (DEFAULT: 4)
@@ -159,11 +167,12 @@ EXAMPLES:
 USAGE:
     
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
-            <sequences_folder> [-o <output_folder> <output_coordinates_table]
-            [-a <window_min> <window_max> <errors_max> Y|N]
+            <sequences_folder> [-o <output_folder> <output_coordinates_table>
+            <output_chr_sizes_file>] [-a <window_min> <window_max>
+            <errors_max> Y|N]
 """
 
-NAME = "Sequence_Extractor.py"
+NAME = "Sequence_Inserter.py"
 
 
 
@@ -183,7 +192,8 @@ PRINT_METRICS = True
 # Minor Configurations #########################################################
 
 DIRMOD__EDIT = "__INSERTED"
-FILEMOD__COORDS = "__FINAL_COORDS.tsv"
+FILEMOD__COORDS = "__POST_INSERT_COORDS.tsv"
+FILEMOD__SIZES = "__POST_INSERT_SIZES.tsv"
 FILEMOD__FASTA = ".fa"
 
 
@@ -230,17 +240,30 @@ STR__error_no_FASTA = """
 ERROR: No FASTA files detected in:
     {f}"""
 
+STR__irregular_direction = """
+WARNING: Irregular directionality symbol detected.
+    "+" is used to denote forward-oriented sequences
+    "-" is used to denote sequences on the complementary strand
+    Any other symbol or text will be irregular, and default to being treated as
+        a forward-oriented sequence."""
 
+STR__min_greater_than_max = "" # TODO
+STR__invalid_min_oh = "" # TODO
+STR__invalid_max_oh = "" # TODO
+STR__invalid_err_max = "" # TODO
+STR__invalid_high_pref = "" # TODO
 
 STR__metrics = """
-     Pre-insertion genome size: {A}
-    Post-insertion genome size: {B}
+        Pre-insertion genome size: {A}
+       Post-insertion genome size: {B}
     
-         Number of chromosomes: {C}
-       Average chromosome size: {D}
+            Number of chromosomes: {C}
+    Average chromosome size (old): (D)
+    Average chromosome size (new): {E}
     
-             Number of inserts: {E}
-           Average insert size: {F}"""
+                Number of inserts: {F}
+               Basepairs inserted: {G}
+              Average insert size: {H}"""
 
 STR__Insert_begin = "\nRunning Insert_Sequences..."
 
@@ -487,6 +510,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
         t.write(chr_name + "\t" + total_start + "\t" + total_end + "\t" +
                 "\t".join(retain) + "\n")
         total_index += size
+        basepairs_inserted += size
             
     PRINT.printP(STR__Insert_complete)
     
@@ -551,7 +575,37 @@ def Report_Metrics(chromosomes, basepairs_original, seqs_inserted,
     
     Report_Metrics(int, int, int, int, int) -> None
     """
-    pass
+    if irregular_direction: PRINT.printE(STR__irregular_direction)
+    # Calculate
+    new_size = basepairs_original + basepairs_inserted
+    avg_chr_size_pre = (float(chromosomes))/basepairs_original
+    avg_chr_size_post = (float(chromosomes))/new_size
+    avg_insert_size = (float(basepairs_inserted))/seqs_inserted
+    # Strings
+    chromosomes = str(chromosomes) + "   "
+    basepairs_original = str(basepairs_original) + "   "
+    seqs_inserted = str(seqs_inserted) + "   "
+    basepairs_inserted = str(basepairs_inserted) + "   "
+    new_size = str(new_size) + "   "
+    avg_chr_size_pre = str(avg_chr_size_pre) + "   "
+    avg_chr_size_post = str(avg_chr_size_post) + "   "
+    avg_insert_size = str(avg_insert_size) + "   "
+    # Pad
+    max_size = max([len(chromosomes), len(basepairs_original), len(new_size),
+            len(seqs_inserted), len(basepairs_inserted), len(avg_chr_size_pre),
+            len(avg_chr_size_post)])
+    chromosomes = Pad_Str(chromosomes, max_size, " ", 0)
+    basepairs_original = Pad_Str(basepairs_original, max_size, " ", 0)
+    seqs_inserted = Pad_Str(seqs_inserted, max_size, " ", 0)
+    basepairs_inserted = Pad_Str(basepairs_inserted, max_size, " ", 0)
+    new_size = Pad_Str(new_size, max_size, " ", 0)
+    avg_chr_size_pre = Pad_Str(avg_chr_size_pre, max_size, " ", 0)
+    avg_chr_size_post = Pad_Str(avg_chr_size_post, max_size, " ", 0)
+    avg_insert_size = Pad_Str(avg_insert_size, max_size, " ", 0)
+    # Print
+    PRINT.printM(STR__metrics.format(A = basepairs_original, B = new_size,
+            C = chromosomes, D = avg_chr_size_pre, E = avg_chr_size_post,
+            F = seqs_inserted, G = seqs_inserted, H = average_insert_size))
 
 
 
@@ -563,6 +617,153 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
     with appropriate arguments if the command line input is valid.
     """
     PRINT.printP(STR__parsing_args)
+    # Remove the runtime environment variable and program name from the inputs
+    inputs = Strip_Non_Inputs(raw_command_line_input, NAME)
+    
+    # No inputs
+    if not inputs:
+        PRINT.printE(STR__no_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Help option
+    if inputs[0] in LIST__help:
+        print(HELP_DOC)
+        return 0
+        return 0
+    
+    # Initial validation
+    if len(inputs) < 3:
+        PRINT.printE(STR__insufficient_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Validate mandatory inputs
+    input_genome_filepath = inputs.pop(0) # Input genome
+    valid = Validate_FASTA_Folder(input_genome_filepath)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    elif valid == 2:
+        PRINT.printE(STR__error_no_FASTA.format(f = input_genom_filepathe))
+        PRINT.printE(STR__use_help)
+        return 1
+    input_coordinates_filepath = inputs.pop(0) # Input coordinates
+    valid = Validate_Read_Path(input_coordinates_filepath)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read.format(f = input_coordinates_filepath))
+        PRINT.printE(STR__use_help)
+        return 1
+    input_sequences_filepath = inputs.pop(0)
+    valid = Validate_FASTA_Folder(input_sequences_filepath) # Input seqs
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    elif valid == 2:
+        PRINT.printE(STR__error_no_FASTA.format(f = input_sequences_filepath))
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Set up rest of the parsing
+    path_out_genome = path_in_folder + DIRMOD__EDIT
+    path_out_coords = path_in_folder + FILEMOD__COORDS
+    path_out_sizes = path_in_folder + FILEMOD__SIZES
+    overhang_min = DEFAULT__overhang_min
+    overhang_max = DEFAULT__overhang_max
+    error_max = DEFAULT__overhang_mismatches
+    highest_preferred = DEFAULT__overhang_largest
+    
+    # Initial validation
+    while inputs:
+        arg = inputs.pop(0)
+        flag = 0
+        try: # Following arguments
+            arg2 = inputs.pop(0)
+            arg3 = inputs.pop(0)
+            arg4 = inputs.pop(0)
+            flag = 3
+            arg5 = inputs.pop(0)
+        except:
+            if flag > 2 and arg == "-o":
+                pass # Enough for output path specification
+            else:
+                PRINT.printE(STR__insufficient_inputs)
+                PRINT.printE(STR__use_help)
+                return 1
+        if arg == "-a":
+            flag = False
+            overhang_min = Validate_Int_NonNeg(arg2)
+            overhang_max = Validate_Int_NonNeg(arg3)
+            error_max = Validate_Int_NonNeg(arg4)
+            highest_preferred = Validate_Bool(arg5)
+            if overhang_min == -1:
+                flag = True
+                PRINT.printE(STR__invalid_min_oh.format(s = arg2))
+            if overhang_max == -1:
+                flag = True
+                PRINT.printE(STR__invalid_max_oh.format(s = arg3))
+            if error_max == -1:
+                flag = True
+                PRINT.printE(STR__invalid_err_max.format(s = arg3))
+            if highest_preferred == None:
+                flag = True
+                PRINT.printE(STR__invalid_high_pref.format(s = arg3))
+            if overhang_min > overhang_max:
+                flag = True
+                PRINT.printE(STR__min_greater_than_max)
+            if flag: return 1
+        elif arg == "-o":
+            path_out_genome = arg2
+            path_out_coords = arg3
+            path_out_sizes = arg4
+        else: # Invalid
+            arg = Strip_X(arg)
+            PRINT.printE(STR__invalid_argument.format(s = arg))
+            PRINT.printE(STR__use_help)
+            return 1
+    
+    # Validate output paths
+    valid_out = Validate_Write_Path__FOLDER(path_out_genome)
+    if valid_out == 0: pass
+    elif valid_out == 1: PRINT.printM(STR__overwrite_accept)
+    else:
+        if valid_out == 2: PRINT.printE(STR__IO_error_write_folder_cannot)
+        elif valid_out == 3: PRINT.printE(STR__overwrite_decline)
+        elif valid_out == 4: PRINT.printE(STR__IO_error_write_folder_forbid)
+        elif valid_out == 5:
+            PRINT.printE(STR__IO_error_write_folder_nonexistent)
+        elif valid_out == 6: PRINT.printE(STR__read_file_invalid)
+        elif valid_out == 7: PRINT.printE(STR__IO_error_write_unexpected)
+        return 1
+    valid_out_1 = Validate_Write_Path__FILE(path_out_coords)
+    valid_out_2 = Validate_Write_Path__FILE(path_out_sizes)
+    valids = [valid_out_1, valid_out_2]
+    if valid_out_1 == 0 and valid_out_2 == 0: pass
+    elif valid_out_1 == 1 and valid_out_1 == 1:
+        PRINT.printM(STR__overwrite_accept)
+    else:
+        if 2 in valids:
+            PRINT.printE(STR__overwrite_decline)
+        if 3 in valids:
+            PRINT.printE(STR__IO_error_write_forbid)
+        if 4 in valids:
+            PRINT.printE(STR__IO_error_write_unable)
+        return 1
+    
+    # Run program
+    exit_state = Insert_Sequences(input_genome_filepath,
+            input_coordinates_filepath, input_sequences_filepath, output_genome,
+            output_coordinates, output_chr_sizes, overhang_min, overhang_max,
+            error_max, highest_preferred)
+    
+    # Exit
+    if exit_state == 0: return 0
+    else:
+        if exit_state == 1: PRINT.printE(STR__unexpected_failure)
+        PRINT.printE(STR__use_help)
+        return 1
 
 
 
