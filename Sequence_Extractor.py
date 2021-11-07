@@ -498,10 +498,30 @@ def Report_Metrics(chromosomes, basepairs_original, basepairs_excised,
     
     Report_Metrics(int, int, int, int, int) -> None
     """
+    # Calculate
     remaining = basepairs_original - basepairs_excised + overlaps
     average_ex_size = basepairs_excised/float(seqs_excised)
+    # Strings
     average_ex_size = str(average_ex_size) + "0"
     average_ex_size = Trim_Percentage_Str(average_ex_size, 2)
+    chromosomes = str(chromosomes) + "   "
+    basepairs_original = str(basepairs_original) + "   "
+    basepairs_excised = str(basepairs_excised) + "   "
+    overlaps = str(overlaps) + "   "
+    remaining = str(remaining) + "   "
+    seqs_excised = str(seqs_excised) + "   "
+    # Pad
+    max_size = max(len(average_ex_size), len(chromosomes), len(seqs_excised),
+            len(basepairs_original), len(basepairs_excised), len(remaining),
+            len(overlaps))
+    average_ex_size = Pad_Str(average_ex_size , max_size, " " , 0)
+    chromosomes = Pad_Str(chromosomes , max_size, " " , 0)
+    basepairs_original = Pad_Str(basepairs_original , max_size, " " , 0)
+    basepairs_excised = Pad_Str(basepairs_excised , max_size, " " , 0)
+    overlaps = Pad_Str(overlaps , max_size, " " , 0)
+    remaining = Pad_Str(remaining , max_size, " " , 0)
+    seqs_excised = Pad_Str(seqs_excised , max_size, " " , 0)
+    # Print
     PRINT.printM(STR__metrics.format(A = chromosomes, B = basepairs_original,
             C = basepairs_excised, D = overlaps, E = remaining,
             F = seqs_excised, G = average_ex_size))
