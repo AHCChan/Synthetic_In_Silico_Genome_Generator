@@ -570,7 +570,7 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
     path_in_file = inputs.pop(0)
     valid = Validate_Read_Path(path_in_file)
     if valid == 1:
-        PRINT.printE(STR__IO_error_read.format(f = path_in))
+        PRINT.printE(STR__IO_error_read.format(f = path_in_file))
         PRINT.printE(STR__use_help)
         return 1
     
