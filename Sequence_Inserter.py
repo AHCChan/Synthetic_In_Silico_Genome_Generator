@@ -161,8 +161,25 @@ OPTIONAL:
 
 
 EXAMPLES SCENARIO EXPLANATION:
+    
+    1:
+    A minimal use case.
+    
+    2:
+    Chimeric elements which have been marked for merge-joining will scan the
+    last 6 nucleotides match of the pre-junction component sequence and the
+    first 6 nucleotides of the post-junction component sequence, and if the
+    two have 1 or fewer mismatches, the "junction" will not be duplicated in the
+    resulting chimeric output sequence.
 
 EXAMPLES:
+    
+    python27 Sequence_Inserter.py Path/PostExGenomeFolder Path/PostEdCoords.tsv
+            Path/ExtractedSequencesFolder
+    
+    python27 Sequence_Inserter.py Path/PostExGenomeFolder Path/PostEdCoords.tsv
+            Path/ExtractedSequencesFolder -o Path/FinalGenomeFolder
+            Path/FinalCoords.tsv Path/FinalSizes.tsv -a 6 7 1 Y
 
 USAGE:
     
@@ -196,12 +213,15 @@ FILEMOD__COORDS = "__POST_INSERT_COORDS.tsv"
 FILEMOD__SIZES = "__POST_INSERT_SIZES.tsv"
 FILEMOD__FASTA = ".fa"
 
+CONFIG__ignore_bad_slicing = False
+CONFIG__mismatch_handling = 0
+
 
 
 # Defaults #####################################################################
 "NOTE: altering these will not alter the values displayed in the HELP DOC"
 
-DEFAULT__width =  = 80
+DEFAULT__width = 80
 
 DEFAULT__overhang_min = 4
 DEFAULT__overhang_max = 100
@@ -247,18 +267,32 @@ WARNING: Irregular directionality symbol detected.
     Any other symbol or text will be irregular, and default to being treated as
         a forward-oriented sequence."""
 
-STR__min_greater_than_max = "" # TODO
-STR__invalid_min_oh = "" # TODO
-STR__invalid_max_oh = "" # TODO
-STR__invalid_err_max = "" # TODO
-STR__invalid_high_pref = "" # TODO
+STR__min_greater_than_max = """
+ERROR: The mminimum permitted overlap window size must not be greater than the
+maximum permitted overlap window size."""
+
+STR__invalid_min_oh = """
+ERROR: Invalid value given for minimum permitted overlap window size."""
+
+STR__invalid_max_oh = """
+ERROR: Invalid value given for maximum permitted overlap window size."""
+
+STR__invalid_err_max = """
+ERROR: Invalid value given for maximum permitted number of mismatches for a
+window to qualify for overlap-merge."""
+
+STR__invalid_high_pref = """
+ERROR: Invalid value given for whether or not the highest permitted window size
+is preferred."""
+
+
 
 STR__metrics = """
         Pre-insertion genome size: {A}
        Post-insertion genome size: {B}
     
             Number of chromosomes: {C}
-    Average chromosome size (old): (D)
+    Average chromosome size (old): {D}
     Average chromosome size (new): {E}
     
                 Number of inserts: {F}
@@ -447,6 +481,8 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
     o.Set_Width(DEFAULT__width)
     o.Set_Newline("\n")
     o.Toggle_Printing_M(False)
+
+    c = open(output_coordinates , "w") # New coordinates table
     
     s = open(output_chr_sizes, "w") # New chromosome sizes
     
@@ -497,25 +533,29 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
             original_index += 1
             total_index += 1
             o.Write_1(f.Get())
+            basepairs_original += 1
         # New sequence
-        seq = Parse_ECSASS(ECSASS_seq)
+        seq = Parse_ECSASS(ECSASS_seq, [input_sequences], window_range,
+                error_max, CONFIG__ignore_bad_slicing,
+                CONFIG__mismatch_handling)
         if direction == "-": seq = Get_Complement(seq)
         elif direction == "+": pass
         else: irregular_direction = True
         length = len(seq)
-        total_start = str(total_index)
-        total_end = str(total_index + length - 1)
+        total_start = str(total_index + 1)
+        total_end = str(total_index + length)
         # Insert sequence
         o.Write(seq)
-        t.write(chr_name + "\t" + total_start + "\t" + total_end + "\t" +
+        c.write(chr_name + "\t" + total_start + "\t" + total_end + "\t" +
                 "\t".join(retain) + "\n")
-        total_index += size
-        basepairs_inserted += size
+        total_index += length
+        basepairs_inserted += length
             
     PRINT.printP(STR__Insert_complete)
     
     # Close up
     t.Close()
+    c.close()
     
     while not f.End():
         f.Read()
@@ -578,8 +618,8 @@ def Report_Metrics(chromosomes, basepairs_original, seqs_inserted,
     if irregular_direction: PRINT.printE(STR__irregular_direction)
     # Calculate
     new_size = basepairs_original + basepairs_inserted
-    avg_chr_size_pre = (float(chromosomes))/basepairs_original
-    avg_chr_size_post = (float(chromosomes))/new_size
+    avg_chr_size_pre = basepairs_original/(float(chromosomes))
+    avg_chr_size_post = new_size/(float(chromosomes))
     avg_insert_size = (float(basepairs_inserted))/seqs_inserted
     # Strings
     chromosomes = str(chromosomes) + "   "
@@ -587,9 +627,12 @@ def Report_Metrics(chromosomes, basepairs_original, seqs_inserted,
     seqs_inserted = str(seqs_inserted) + "   "
     basepairs_inserted = str(basepairs_inserted) + "   "
     new_size = str(new_size) + "   "
-    avg_chr_size_pre = str(avg_chr_size_pre) + "   "
-    avg_chr_size_post = str(avg_chr_size_post) + "   "
-    avg_insert_size = str(avg_insert_size) + "   "
+    avg_chr_size_pre = str(avg_chr_size_pre) + "0"
+    avg_chr_size_pre = Trim_Percentage_Str(avg_chr_size_pre, 2)
+    avg_chr_size_post = str(avg_chr_size_post) + "0"
+    avg_chr_size_post = Trim_Percentage_Str(avg_chr_size_post, 2)
+    avg_insert_size = str(avg_insert_size) + "0"
+    avg_insert_size = Trim_Percentage_Str(avg_insert_size, 2)
     # Pad
     max_size = max([len(chromosomes), len(basepairs_original), len(new_size),
             len(seqs_inserted), len(basepairs_inserted), len(avg_chr_size_pre),
@@ -605,7 +648,7 @@ def Report_Metrics(chromosomes, basepairs_original, seqs_inserted,
     # Print
     PRINT.printM(STR__metrics.format(A = basepairs_original, B = new_size,
             C = chromosomes, D = avg_chr_size_pre, E = avg_chr_size_post,
-            F = seqs_inserted, G = seqs_inserted, H = average_insert_size))
+            F = seqs_inserted, G = seqs_inserted, H = avg_insert_size))
 
 
 
@@ -667,9 +710,9 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
         return 1
     
     # Set up rest of the parsing
-    path_out_genome = path_in_folder + DIRMOD__EDIT
-    path_out_coords = path_in_folder + FILEMOD__COORDS
-    path_out_sizes = path_in_folder + FILEMOD__SIZES
+    path_out_genome = input_genome_filepath + DIRMOD__EDIT
+    path_out_coords = input_coordinates_filepath + FILEMOD__COORDS
+    path_out_sizes = input_genome_filepath + FILEMOD__SIZES
     overhang_min = DEFAULT__overhang_min
     overhang_max = DEFAULT__overhang_max
     error_max = DEFAULT__overhang_mismatches
@@ -684,14 +727,13 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
             arg3 = inputs.pop(0)
             arg4 = inputs.pop(0)
             flag = 3
-            arg5 = inputs.pop(0)
+            if arg == "-a":
+                arg5 = inputs.pop(0)
         except:
-            if flag > 2 and arg == "-o":
-                pass # Enough for output path specification
-            else:
-                PRINT.printE(STR__insufficient_inputs)
-                PRINT.printE(STR__use_help)
-                return 1
+            print arg
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
+            return 1
         if arg == "-a":
             flag = False
             overhang_min = Validate_Int_NonNeg(arg2)
@@ -754,9 +796,9 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
     
     # Run program
     exit_state = Insert_Sequences(input_genome_filepath,
-            input_coordinates_filepath, input_sequences_filepath, output_genome,
-            output_coordinates, output_chr_sizes, overhang_min, overhang_max,
-            error_max, highest_preferred)
+            input_coordinates_filepath, input_sequences_filepath,
+            path_out_genome, path_out_coords, path_out_sizes,
+            overhang_min, overhang_max, error_max, highest_preferred)
     
     # Exit
     if exit_state == 0: return 0
@@ -764,6 +806,117 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
         if exit_state == 1: PRINT.printE(STR__unexpected_failure)
         PRINT.printE(STR__use_help)
         return 1
+    
+    
+
+def Validate_FASTA_Folder(dirpath):
+    """
+    Validates the dirpath of the input file as containing FASTA files.
+    Return 0 if the dirpath is valid and contains at least 1 FASTA file.
+    Return 1 if the dirpath is valid but contains no FASTA files.
+    Return 2 if the dirpath is invalid.
+    
+    Validate_Read_Path(str) -> int
+    """
+    try:
+        os.listdir(dirpath)
+        files = Get_Files_W_Extensions(dirpath, LIST__FASTA)
+        if len(files) > 0: return 0
+        return 1
+    except:
+        return 2
+
+
+
+def Validate_Write_Path__FILE(filepath):
+    """
+    Validates the filepath of the output file.
+    Return 0 if the filepath is writtable.
+    Return 1 if the user decides to overwrite an existing file.
+    Return 2 if the user declines to overwrite an existing file.
+    Return 3 if the file exists and the program is set to forbid overwriting.
+    Return 4 if the program is unable to write to the filepath specified.
+    
+    Validate_Write_Path(str) -> int
+    """
+    try:
+        f = open(filepath, "U")
+        f.close()
+    except: # File does not exist. 
+        try:
+            f = open(filepath, "w")
+            f.close()
+            return 0 # File does not exist and it is possible to write
+        except:
+            return 4 # File does not exist but it is not possible to write
+    # File exists
+    if WRITE_PREVENT: return 3
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm.format(f = filepath))
+        if confirm not in LIST__yes: return 2
+    # User is not prevented from overwritting and may have chosen to overwrite
+    try:
+        f = open(filepath, "w")
+        f.close()
+        if WRITE_CONFIRM: return 1 # User has chosen to overwrite existing file
+        return 0 # Overwriting existing file is possible
+    except:
+        return 4 # Unable to write to specified filepath
+
+def Validate_Write_Path__FOLDER(folder_path):
+    """
+    Validates the writepath of the output folder.
+    Attempts to create the folder if it does not exist.
+    
+    Return 0 if the folder path is valid and empty and can be written into.
+    Return 1 if the folder path is valid and the user decides to overwrite
+            existing files.
+    Return 2 if the folder path is valid and empty but cannot be written into.
+    Return 3 if the folder path is valid and the user declines to overwrite
+            existing files.
+    Return 4 if the folder path is valid, but contains existing files and the
+            program is set to forbid overwriting.
+    Return 5 is the folder path does not exist and cannot be created.
+    Return 6 for unexpected errors.
+    
+    Validate_Folder_Path(str, str) -> int
+    """
+    new_dir = False
+    # Create folder if it does not exist
+    if not os.path.isdir(folder_path):
+        try:
+            os.mkdir(folder_path)
+        except:
+            return 5
+        new_dir = True
+    
+    # Create a random file for testing purposes
+    random_name = str(Random.random())
+    random_path = folder_path + "\\" + random_name
+    while os.path.exists(random_path):
+        random_name = str(Random.random())
+        random_path = folder_path + "\\" + random_name
+    # Attempt to write to the folder
+    try:
+        f = open(random_path, "w")
+    except:
+        return 2
+    # Unexpected errors
+    try:
+        f.close()
+        os.remove(random_path)
+    except:
+        return 6
+    
+    if new_dir: return 0
+    
+    # OVERWRITE TESTING
+    FLAG_exists = 0
+    if WRITE_PREVENT: return 4
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm_2.format(f=folder_path))
+        if confirm not in LIST__yes: return 3        
+    return 1
 
 
 

@@ -1,6 +1,6 @@
-chr1	0	4	+	TE_000000001	FILE:TE_000000001	TelomereF	SimpleRepeat	Placeholder3
-chr1	155	234	+	TE_000000002	FILE:TE_000000002	PseudoT1	PseudoTransposon	Placeholder3
-chr1	315	394	-	TE_000000003	FILE:TE_000000003	Gs	SimpleRepeat	Placeholder3
-chr1	470	474	-	TE_000000004	FILE:TE_000000004	TelomereR	SimpleRepeat	Placeholder3
-chr2	140	179	-	TE_000000005	FILE:TE_000000005	PseudoT2	PseudoTransposon	Placeholder3
-chr2	140	200	+	TE_000000006	FILE:TE_000000006	CGs	SimpleRepeat	Placeholder3
+chr1	1	5	+	TE_000000001	FILE(TE_000000001)	TelomereF	SimpleRepeat	Placeholder3
+chr1	156	235	+	TE_000000002	FILE(TE_000000002)	PseudoT1	PseudoTransposon	Placeholder3
+chr1	316	395	-	TE_000000003	FILE(TE_000000003)	Gs	SimpleRepeat	Placeholder3
+chr1	471	475	-	TE_000000004	FILE(TE_000000004)	TelomereR	SimpleRepeat	Placeholder3
+chr2	141	180	-	TE_000000005	FILE(TE_000000005)	PseudoT2	PseudoTransposon	Placeholder3
+chr2	141	201	+	TE_000000006	FILE(TE_000000006)	CGs	SimpleRepeat	Placeholder3
