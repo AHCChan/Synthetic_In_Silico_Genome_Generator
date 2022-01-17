@@ -419,7 +419,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
         o.Write_F(">" + ID + "\t" + "\t".join(elements))
         o.Newline()
         o.Write(sb)
-        o.Close()
+        o.Close_Newline()
         c.write(chr_name + "\t" + str(post_ex_index) + "\t")
         c.write(str(post_ex_end) + "\t" + direction + "\t")
         c.write(ID + "\tFILE(" + ID + ")\t")
