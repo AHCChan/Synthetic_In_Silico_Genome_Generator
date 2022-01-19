@@ -67,12 +67,6 @@ OPTIONAL:
         
         The phred system for denoting the quality scores of each nucleotide.
     
-    phred
-        
-        (DEFAULT: phred33)
-        
-        The phred system for denoting the quality scores of each nucleotide.
-    
     avg_quality
         
         (DEFAULT: 0)
