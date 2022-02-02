@@ -235,8 +235,8 @@ FILEMOD__FASTQ_2 = "__READS_r2.fq"
 
 # For name string
 COPY_DIGITS = 3
-STR__forward = "r1"
-STR__reverse = "r2"
+STR__forward = "__r1"
+STR__reverse = "__r2"
 
 PRINT_INTERVAL = 10000
 
@@ -813,7 +813,7 @@ def Generate_Name(frag_name, duplicates, orientation):
     s = str(duplicates)
     s = Pad_Str(s, COPY_DIGITS, "0")
     # SB
-    sb = frag_name + "__" + s + "__" + orientation
+    sb = frag_name + "__" + s + orientation
     return sb
 
 
