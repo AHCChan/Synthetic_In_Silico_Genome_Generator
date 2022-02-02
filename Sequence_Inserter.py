@@ -689,7 +689,7 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     elif valid == 2:
-        PRINT.printE(STR__error_no_FASTA.format(f = input_genom_filepathe))
+        PRINT.printE(STR__error_no_FASTA.format(f = input_genome_filepath))
         PRINT.printE(STR__use_help)
         return 1
     input_coordinates_filepath = inputs.pop(0) # Input coordinates
