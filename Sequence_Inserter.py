@@ -547,7 +547,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
         # Insert sequence
         o.Write(seq)
         c.write(chr_name + "\t" + total_start + "\t" + total_end + "\t" +
-                "\t".join(retain) + "\n")
+                direction + "\t" + "\t".join(retain) + "\n")
         total_index += length
         basepairs_inserted += length
             
