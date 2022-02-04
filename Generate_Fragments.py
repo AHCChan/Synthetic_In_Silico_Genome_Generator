@@ -731,8 +731,8 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
                 counter += 1
                 count += 1
                 total += length
-                index = 0-length
-                bases = previous[index:]
+                index = 0-length-1
+                bases = previous[:index:-1]
                 seq = "".join(bases)
                 name = Generate_Frag_Name(counter, current_index, STR__reverse,
                         end)
