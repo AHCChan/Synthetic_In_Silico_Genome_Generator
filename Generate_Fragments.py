@@ -1,6 +1,6 @@
 HELP_DOC = """
 FRAGMENT GENERATOR
-(version 1.0)
+(version 2.0)
 by Angelo Chan
 
 This is a program for generating DNA fragment sequences based on a template,
@@ -41,6 +41,25 @@ The formula is as follows:
         
         FRAG_COVERAGE is calculated from all of the above factors and is used to
         calculate the probability of a fragment being generated at each location
+
+
+
+ABOUT COVERAGE DISTRIBUTION:
+
+This verion of Generate_Fragments was intended to allow different parts of the
+genome to be covered at different depths, while averaging out to be the depth of
+coverage specified. However, rather than islands of the genome which are heavily
+sequenced and deserts which are sparsely sequenced or ignored entirely, the
+variation in depth of coverage occurs at an almost nucleotide level.
+
+This is because the randomization process determines the distance between the
+midpoints of fragments. Thus the distances between fragments will follow the
+distribution specified. However, as long as the average distance is relatively
+small compared to fragment sizes, the coverage at a nucleotide level will
+generally amortize to around the average.
+
+A proper implementation of the "islands and deserts" kind of distribution will
+likely require, at the very least, a two-layered probability generation model.
 
 
 
@@ -308,6 +327,7 @@ import random as Random
 import _Controlled_Print as PRINT
 from NSeq_Match import *
 from _Command_Line_Parser import *
+from Deque import *
 
 from Chr_FASTA_File_Reader import *
 
@@ -622,6 +642,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
     Generate_Fragments(str, str/file, [int, int, float], int, [int, int, float],
             [int, *...]) -> [int, int]
     """
+    print depth_settings, frag_settings
     # Metrics setup
     count = 0
     total = 0
@@ -631,12 +652,8 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
     frag_len, frag_len_method, frag_len_param = frag_settings
     method = method_settings[0]
     
-    # Calculations (utilization and probabilities)
-    utilization = float(read_len)/frag_len
-    bases_per_frag = frag_len * utilization
-    if method == METHOD.ALL:
-        prob = depth / bases_per_frag
-        prob = prob / 2 # For both forward and reverse
+    # Calculations
+    average_dist = float(read_len)/depth
     
     # Calculations (maximum length)
     if frag_len_method == DIST.NORMAL: max_len = 5 * frag_len
@@ -649,14 +666,14 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
             flag = True
             depth_param = -depth_param
         else: flag = False
-        beta = (prob / depth_param) ** 0.5
-        alpha = prob / beta
+        beta = (average_dist / depth_param) ** 0.5
+        alpha = average_dist / beta
         depth_param = [alpha, beta, flag]
     elif depth_method == DIST.UNIFORM:
-        depth_param = 0
-        while prob > 1:
-            depth_param += 1
-            prob -= 1
+        lower = int(average_dist) - frag_len_param
+        upper = int(average_dist + 0.5) + frag_len_param
+        depth_param = range(lower, upper+1)
+        average_dist = 0
     
     if frag_len_method == DIST.GAMMA:
         if frag_len_param < 0:
@@ -678,67 +695,95 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
     else: o = output
     
     # Setup
+    until_next = 1
+    new_frags = 0
+    
     current_index = 0
     counter = 0
-    previous = []
-    len_previous = 0
-    unfinished_frags = [] # [goal, current, seq, name]
+    frags = [] # Unfinished frags [start, end, direction, seq]
+    
+    previous = Deque(max_len, "N")
     
     # Main Loop
     while not f.End():
         f.Read()
-        
         current_index += 1
-        
         n = f.Get_Current()
-        n_ = Get_Complement(n)
         
-        previous.append(n_)
-        if len(previous) > max_len: previous.pop(0)
-        else: len_previous += 1
+        previous.Add(n)
         
-        # Unfinished forward frags
-        for list_ in unfinished_frags:
-            list_[1] += 1
-            list_[2] += n
-            if list_[0] == list_[1]:
-                count += 1
-                total += list_[0]
-                s = ">" + list_[3] + "\n" + list_[2] + "\n"
-                o.write(s)
-        for list_ in unfinished_frags:
-            if list_[0] == list_[1]: unfinished_frags.remove(list_)
-        
-        # Calculate numbers
-        forwards = Custom_Random_Distribution(prob, depth_method, depth_param)
-        backwards = Custom_Random_Distribution(prob, depth_method, depth_param)
-        
-        # Individual frags
-        while forwards > 0:
-            counter += 1
-            length = Custom_Random_Distribution(frag_len, frag_len_method,
-                    frag_len_param)
-            end = current_index + length
-            name = Generate_Frag_Name(counter, current_index, STR__forward, end)
-            unfinished_frags.append([length, 1, n, name])
-            forwards -= 1
-        
-        while backwards > 0:
-            length = Custom_Random_Distribution(frag_len, frag_len_method,
-                    frag_len_param)
-            end = current_index - length
-            if end > 0:
+        # Calculate next frag, also number of frags at current position
+        until_next -= 1
+        if until_next == 0:
+            # Random until next
+            until_next = Custom_Random_Distribution(average_dist, depth_method,
+                    depth_param)
+            until_next = int(until_next + 0.5)
+            # Number of new frags, adjust until_next
+            new_frags = 1
+            if until_next < 1:
+                new_frags = 2 - until_next
+                until_next = 1
+            
+        # For all frags
+        temp = []
+        for frag in frags: # [start, end, direction, seq]
+            frag[3].append(n)
+            if current_index == frag[1]: # End of frag reached
                 counter += 1
-                count += 1
-                total += length
-                index = 0-length-1
-                bases = previous[:index:-1]
-                seq = "".join(bases)
-                name = Generate_Frag_Name(counter, current_index, STR__reverse,
-                        end)
+                seq = "".join(frag[3])
+                if frag[2]:
+                    direction = STR__forward
+                else:
+                    direction = STR__reverse
+                    seq = Get_Complement(seq, True)
+                name = Generate_Frag_Name(counter, frag[0], direction, frag[1])
+                # Write
                 s = ">" + name + "\n" + seq + "\n"
                 o.write(s)
-            backwards -= 1
+                # Metrics
+                size = end - start + 1
+                count += 1
+                total += size
+            else: # Frag still going
+                temp.append(frag)
+        frags = temp
+        
+        # New frags
+        while new_frags > 0:
+            new_frags -= 1
+            # Length
+            length = Custom_Random_Distribution(frag_len, frag_len_method,
+                    frag_len_param)
+            if length < 3: length = 3
+            if length > max_len: length = max_len
+            # Coin Flip
+            coin_flip = Random.random()
+            if coin_flip < 0.5: sense = True
+            else: sense = False
+            # Coordinates
+            half = length/2
+            if length % 2 == 1: # Odd length
+                backtrack = half + 1
+                start = current_index - half
+                end = current_index + half
+            else: # Even length
+                if sense:
+                    backtrack = half
+                    start = current_index - half
+                    end = current_index + half
+                else:
+                    backtrack = half + 1
+                    start = current_index - half - 1
+                    end = current_index + half - 1
+            # Out Of Bounds
+            if current_index - backtrack < 0:
+                # Out of bounds
+                pass
+            else:
+                # Not out of bounds
+                seq = previous.Poll(backtrack)
+                frags.append([start, end, sense, seq])
     
     # Close file
     if type(output) == str: o.close()
