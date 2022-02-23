@@ -764,16 +764,16 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
             half = length/2
             if length % 2 == 1: # Odd length
                 backtrack = half + 1
-                start = current_index - half
+                start = current_index - half + 1
                 end = current_index + half
             else: # Even length
                 if sense:
                     backtrack = half
-                    start = current_index - half
+                    start = current_index - half + 1
                     end = current_index + half
                 else:
                     backtrack = half + 1
-                    start = current_index - half - 1
+                    start = current_index - half
                     end = current_index + half - 1
             # Out Of Bounds
             if current_index - backtrack < 0:
