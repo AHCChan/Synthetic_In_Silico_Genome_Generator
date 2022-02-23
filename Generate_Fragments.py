@@ -642,7 +642,6 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
     Generate_Fragments(str, str/file, [int, int, float], int, [int, int, float],
             [int, *...]) -> [int, int]
     """
-    print depth_settings, frag_settings
     # Metrics setup
     count = 0
     total = 0
