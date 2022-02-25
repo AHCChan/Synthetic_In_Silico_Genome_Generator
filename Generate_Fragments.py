@@ -735,7 +735,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
                     direction = STR__forward
                 else:
                     direction = STR__reverse
-                    seq = Get_Complement(seq, True)
+                    seq = Get_Complement(seq, False)
                 name = Generate_Frag_Name(counter, frag[0], direction, frag[1])
                 # Write
                 s = ">" + name + "\n" + seq + "\n"
