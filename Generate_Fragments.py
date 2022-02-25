@@ -735,7 +735,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
                     direction = STR__forward
                 else:
                     direction = STR__reverse
-                    seq = Get_Complement(seq, False)
+                    seq = Get_Complement(seq, True)
                 name = Generate_Frag_Name(counter, frag[0], direction, frag[1])
                 # Write
                 s = ">" + name + "\n" + seq + "\n"
@@ -781,7 +781,7 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
                 pass
             else:
                 # Not out of bounds
-                seq = previous.Poll(backtrack)
+                seq = previous.PollR(backtrack)
                 frags.append([start, end, sense, seq])
     
     # Close file
