@@ -42,6 +42,9 @@ This program requires the following files from the following modules:
 
     Phred_Library module: (https://github.com/AHCChan/Phred_Library)
         Phred.py
+
+    Deque module: (https://github.com/AHCChan/Deque)
+        Deque.py
     
 
 
@@ -83,6 +86,7 @@ You can simply open the files:
     NSeq_Match.py
     ECSASS_Parser.py
     Phred.py
+    Deque.py
 
 ... in your online browser and copy their contents onto a local file on your
 computer with the same name. Ensure that these files are in the same folder.
