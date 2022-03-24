@@ -521,7 +521,7 @@ def Parse_Command_Line_Input__Generate_Synthetic_Genome(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
-    # Validate mandatory inputs
+    # Validate mandatory input
     path_in = inputs.pop(0)
     valid = Validate_Read_Path(path_in)
     if valid == 1:
