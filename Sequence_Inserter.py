@@ -18,7 +18,7 @@ USAGE:
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
             <sequences_folder> [-o <output_folder> <output_coordinates_table>
             <output_chr_sizes_file>] [-a <window_min> <window_max>
-            <errors_max> Y|N]
+            <errors_max> Y|N] [-m 
 
 
 
@@ -151,12 +151,22 @@ OPTIONAL:
         for an overlap-join or an overlap-duplicate.
 
     Y|N
+        (-a)
         
-        (DEFAULT: 0)
+        (DEFAULT: Y)
         
         Whether or not the largest qualifying window size will be used for
         overlap-joins and overlap-duplicates. If set to "N", the smallest
         qualifying window will be used instead.
+
+    Y|N
+        (-m)
+        
+        (DEFAULT: N)
+        
+        Whether or not to create a "masked" insertion genome. Instead of the
+        specified sequence being inserted, a series of Ns of equal length to
+        the sequence will be inserted instead.
 
 
 
@@ -227,6 +237,7 @@ DEFAULT__overhang_min = 4
 DEFAULT__overhang_max = 100
 DEFAULT__overhang_mismatches = 0
 DEFAULT__overhang_largest = True
+DEFAULT__mask = False
 
 
 
@@ -285,6 +296,8 @@ STR__invalid_high_pref = """
 ERROR: Invalid value given for whether or not the highest permitted window size
 is preferred."""
 
+STR__invalid_mask = """
+ERROR: Invalid value given for whether or not to mask the inserted sequences."""
 
 
 STR__metrics = """
@@ -337,7 +350,7 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 def Insert_Sequences(input_genome, input_coordinates, input_sequences,
             output_genome, output_coordinates, output_chr_sizes, overhang_min,
-            overhang_max, error_max, highest_preferred):
+            overhang_max, error_max, highest_preferred, mask):
     """
     Assemble and insert DNA sequences into the DNA template (usually a genome or
     genome-like biological entity) according to the sequence assembly
@@ -445,6 +458,10 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
             Whether or not the largest qualifying window size will be used for
             overlap-joins and overlap-duplicates. If False, the smallest
             qualifying window will be used instead.
+    @mask
+            (bool)
+            Whether or not to "masked" the inserted sequences by replacing them
+            with a string of Ns of equal length.
     
     Return a value of 0 if the function runs successfully.
     Return a value of 1 if there is a problem accessing the data or if there are
@@ -538,9 +555,12 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
         seq = Parse_ECSASS(ECSASS_seq, [input_sequences], window_range,
                 error_max, CONFIG__ignore_bad_slicing,
                 CONFIG__mismatch_handling)
-        if direction == "-": seq = Get_Complement(seq)
-        elif direction == "+": pass
-        else: irregular_direction = True
+        if mask:
+            seq = len(seq)*"N"
+        else:
+            if direction == "-": seq = Get_Complement(seq)
+            elif direction == "+": pass
+            else: irregular_direction = True
         length = len(seq)
         total_start = str(total_index + 1)
         total_end = str(total_index + length)
@@ -717,18 +737,29 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
     overhang_max = DEFAULT__overhang_max
     error_max = DEFAULT__overhang_mismatches
     highest_preferred = DEFAULT__overhang_largest
+    mask = DEFAULT__mask
     
     # Initial validation
     while inputs:
         arg = inputs.pop(0)
         flag = 0
         try: # Following arguments
-            arg2 = inputs.pop(0)
-            arg3 = inputs.pop(0)
-            arg4 = inputs.pop(0)
-            flag = 3
-            if arg == "-a":
+            if arg in ["-m"]:
+                arg2 = inputs.pop(0)
+            elif arg in ["-o"]:
+                arg2 = inputs.pop(0)
+                arg3 = inputs.pop(0)
+                arg4 = inputs.pop(0)
+            elif arg in ["-a"]:
+                arg2 = inputs.pop(0)
+                arg3 = inputs.pop(0)
+                arg4 = inputs.pop(0)
                 arg5 = inputs.pop(0)
+            else: # Invalid
+                arg = Strip_X(arg)
+                PRINT.printE(STR__invalid_argument.format(s = arg))
+                PRINT.printE(STR__use_help)
+                return 1
         except:
             print arg
             PRINT.printE(STR__insufficient_inputs)
@@ -760,11 +791,11 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
             path_out_genome = arg2
             path_out_coords = arg3
             path_out_sizes = arg4
-        else: # Invalid
-            arg = Strip_X(arg)
-            PRINT.printE(STR__invalid_argument.format(s = arg))
-            PRINT.printE(STR__use_help)
-            return 1
+        elif arg == "-m":
+            mask = Validate_Bool(arg2)
+            if mask == None:
+                PRINT.printE(STR__invalid_mask.format(s = arg3))
+                return 1
     
     # Validate output paths
     valid_out = Validate_Write_Path__FOLDER(path_out_genome)
@@ -798,7 +829,7 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
     exit_state = Insert_Sequences(input_genome_filepath,
             input_coordinates_filepath, input_sequences_filepath,
             path_out_genome, path_out_coords, path_out_sizes,
-            overhang_min, overhang_max, error_max, highest_preferred)
+            overhang_min, overhang_max, error_max, highest_preferred, mask)
     
     # Exit
     if exit_state == 0: return 0
