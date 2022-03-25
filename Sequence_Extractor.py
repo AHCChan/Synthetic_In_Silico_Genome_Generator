@@ -204,6 +204,10 @@ STR__error_no_FASTA = """
 ERROR: No FASTA files detected in:
     {f}"""
 
+STR__error_no_chr = """
+ERROR: Unable to open chromosome FASTA file:
+    {c}"""
+
 
 
 STR__metrics = """
@@ -375,6 +379,14 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
             current_chr_name = chr_name
             chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
             f.Open(chr_file_path)
+            if f.End():
+                c.close()
+                s.close()
+                w.Close()
+                o.Close()
+                t.Close()
+                PRINT.printE(STR__error_no_chr.format(c = chr_name))
+                return 1
             chr_write_path = output_genome + "\\" + chr_name + FILEMOD__FASTA
             w.Close()
             w.Open(chr_write_path)
