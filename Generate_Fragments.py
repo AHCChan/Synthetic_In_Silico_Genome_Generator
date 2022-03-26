@@ -69,6 +69,7 @@ USAGE:
             <depth_of_coverage>] [-c N|G|U <stdev>|<alpha_mod>|<max_dist>] [-r
             <read_length>] [-l <avg_frag_len>] [-f N|G|U
             <stdev>|<alpha_mod>|<max_dist>] [-m <method> [method_sup]...]
+            [-u <unique_id_mod>]
 
 
 
@@ -193,6 +194,7 @@ OPTIONAL:
     method
         
         (DEFAULT: ALL)
+        
         Method of deciding where fragments can be generated. Fragments generated
         using restriction enzymes will only occur at certain locations, while
         fragments generated using sonication can start or begin at any
@@ -203,6 +205,14 @@ OPTIONAL:
         Supplementary inputs, as required, for deciding where fragments can be
         generated. Currently not reelvant because the only method implemented
         does not require any additional inputs.
+    
+    unique_id_mod
+    
+        (DEFAULT: (None))
+        
+        A string prefix which forms part of the fragment ID. Allows fragments
+        from different runs to be pooled together and still have unique IDs
+        relative to each other.
 
 
 
@@ -270,6 +280,7 @@ USAGE:
             <depth_of_coverage>] [-c N|G|U <stdev>|<alpha_mod>|<max_dist>] [-r
             <read_length>] [-l <avg_frag_len>] [-f N|G|U
             <stdev>|<alpha_mod>|<max_dist>] [-m <method> [method_sup]...]
+            [-u <unique_id_mod>]
 """
 
 NAME = "Generate_Fragments.py"
@@ -294,6 +305,7 @@ PRINT_METRICS = True
 FILEMOD__FASTA = "__FRAGMENTS.fa"
 
 # For name string
+DEFAULT__STR__unique_id_mod = ""
 ID_SIZE = 15
 STR__forward = "F"
 STR__reverse = "R"
@@ -476,7 +488,7 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 # Functions ####################################################################
 
 def Generate_Fragments(path_in, path_out, depth_settings, read_len,
-            frag_settings, method_settings):
+            frag_settings, method_settings, unique_id_mod):
     """
     Generate a series of DNA fragments from the DNA templates in a folder of
     FASTA files.
@@ -564,6 +576,11 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
             What other variables are required depend on the first integer:
                 ALL:
                     No other variables are necessary.
+    @unique_id_mod
+            (str)
+            A string prefix which forms part of the fragment ID. Allows
+            fragments from different runs to be pooled together and still have
+            unique IDs relative to each other.
     
     Return a value of 0 if the function runs successfully.
     Return a value of 1 if there is a problem accessing the data or if there are
@@ -736,7 +753,8 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
                 else:
                     direction = STR__reverse
                     seq = Get_Complement(seq, True)
-                name = Generate_Frag_Name(counter, frag[0], direction, frag[1])
+                name = Generate_Frag_Name(unique_id_mod, counter, frag[0],
+                        direction, frag[1])
                 # Write
                 s = ">" + name + "\n" + seq + "\n"
                 o.write(s)
@@ -891,13 +909,21 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
         if r < 0: r = -r
     return r
     
-def Generate_Frag_Name(counter, start, direction, end):
+def Generate_Frag_Name(unique_id, counter, start, direction, end):
     """
     Generate a name for a DNA fragment based on how many fragments have already
     been generated, and the coordinates and directionality of the fragment.
+    
+    @unique_id   (str)
+    @counter     (int)
+    @start       (str)
+    @direction   (str)
+    @end         (str)
+    
+    Generate_Name(str, int, str, str, str) -> str
     """
     sb = Pad_Str(str(counter), ID_SIZE, "0", 0)
-    sb = sb + "__" + str(start) + "_" + direction + "_" + str(end)
+    sb = unique_id + sb + "__" + str(start) + "_" + direction + "_" + str(end)
     return sb
 
 
@@ -953,6 +979,7 @@ def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
     frag_dist = DEFAULT__frag_dist
     frag_num = DEFAULT__frag_num
     method = DEFAULT__method
+    unique_id_mod = DEFAULT__STR__unique_id_mod
     
     # Validate optional inputs (except output path)
     while inputs:
@@ -1012,6 +1039,8 @@ def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
             if not method:
                 PRINT.printE(STR__invalid_method.format(s = arg))
                 return 1
+        elif arg == "-u":
+            unique_id_mod = arg2
         else: # Invalid
             arg = Strip_X(arg)
             PRINT.printE(STR__invalid_argument.format(s = arg))
@@ -1033,7 +1062,8 @@ def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
     
     # Run program
     exit_state = Generate_Fragments(path_in, path_out, [depth, cov_dist,
-            cov_num], read_len, [frag_len, frag_dist, frag_num], [method])
+            cov_num], read_len, [frag_len, frag_dist, frag_num], [method],
+            unique_id_mod)
     
     # Exit
     if exit_state == 0: return 0

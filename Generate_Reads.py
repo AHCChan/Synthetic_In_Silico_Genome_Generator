@@ -18,7 +18,7 @@ USAGE:
             [-q <avg_quality> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-d
             <avg_duplicates> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-m
             <min_duplicates> <max_duplicates>] [-t <avg_truncation> N|G|U
-            <stdev>|<alpha_mod>|<max_dist>] [-x <threads>]
+            <stdev>|<alpha_mod>|<max_dist>] [-x <threads>] [-u <unique_id_mod>]
 
 
 
@@ -150,6 +150,14 @@ OPTIONAL:
         
         (Multithreading is not yet implemented. This is a placeholder.)
         The number of threads to use.
+    
+    unique_id_mod
+    
+        (DEFAULT: (None))
+        
+        A string prefix which forms part of the fragment ID. Allows reads from
+        different runs to be pooled together and still have unique IDs relative
+        to each other.
 
 CONTEXTUAL FLAGS:
 (For specifying probability distribution parameters)
@@ -208,7 +216,7 @@ USAGE:
             [-q <avg_quality> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-d
             <avg_duplicates> N|G|U <stdev>|<alpha_mod>|<max_dist>] [-m
             <min_duplicates> <max_duplicates>] [-t <avg_truncation> N|G|U
-            <stdev>|<alpha_mod>|<max_dist>]
+            <stdev>|<alpha_mod>|<max_dist>] [-x <threads>] [-u <unique_id_mod>]
 """
 
 NAME = "Generate_Reads.py"
@@ -234,6 +242,7 @@ FILEMOD__FASTQ_1 = "__READS_r1.fq"
 FILEMOD__FASTQ_2 = "__READS_r2.fq"
 
 # For name string
+DEFAULT__STR__unique_id_mod = ""
 COPY_DIGITS = 3
 STR__forward = "__r1"
 STR__reverse = "__r2"
@@ -413,7 +422,8 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 # Functions ####################################################################
 
 def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
-            duplicate_settings, duplicate_minmax, truncation_settings, threads):
+            duplicate_settings, duplicate_minmax, truncation_settings, threads,
+            unique_id_mod):
     """
     Generate a series of DNA reads from the DNA fragments in a FASTA file. This
     is designed to imitate the sequencing of DNA fragments in NGS.
@@ -490,6 +500,11 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
             (int)
             The number of threads to use. (Multi-threading) Functionality not
             implemented yet.
+    @unique_id_mod
+            (str)
+            A string prefix which forms part of the fragment ID. Allows reads
+            from different runs to be pooled together and still have unique
+            IDs relative to each other.
     
     Return a value of 0 if the function runs successfully.
     Return a value of 1 if there is a problem with the input file.
@@ -618,7 +633,8 @@ def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
         flag_copy = False
         if temp_f > 1: # Forward
             # Generate read
-            name = Generate_Name(frag_name, duplicates, STR__forward)
+            name = Generate_Name(unique_id_mod, frag_name, duplicates,
+                    STR__forward)
             seq = frag_seq[:temp_f]
             results = Generate_Read_From_Seq(seq, phred, temp_f,
                     quality_settings)
@@ -634,7 +650,8 @@ def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
             cumulative_score += total
         if temp_r > 1: # Reverse
             # Generate read
-            name = Generate_Name(frag_name, duplicates, STR__reverse)
+            name = Generate_Name(unique_id_mod, frag_name, duplicates,
+                    STR__reverse)
             temp = frag_seq[-temp_r:]
             seq = Get_Complement(temp)
             results = Generate_Read_From_Seq(seq, phred, temp_r,
@@ -663,6 +680,7 @@ def Generate_Read_From_Seq(seq, phred, length, quality_settings):
     This is a modular component of Generate_Reads_From_Frag. Each fragment can
     generate multiple reads. This function deals with individual reads.
     """
+    if length > len(seq): length = len(seq)
     # Quality
     q1, q2, q3 = quality_settings
     if ( q2 == DIST.NORMAL or q2 == DIST.UNIFORM ) and q3 == 0:
@@ -694,6 +712,7 @@ def Generate_Read_From_Seq(seq, phred, length, quality_settings):
         scores += phred[q]
         total += q   
     # Return
+    if len(read) != len(scores): print "###"
     return [read, scores, errors, total]
 
 
@@ -798,22 +817,23 @@ def Custom_Random_Distribution(mean, method, param, must_positive=False):
         if r < 0: r = -r
     return r
 
-def Generate_Name(frag_name, duplicates, orientation):
+def Generate_Name(unique_id, frag_name, duplicates, direction):
     """
     Generate a read name, given the name of a fragment, the current duplicate
     number, and the orientation of the read.
     
+    @unique_id   (str)
     @frag_name   (str)
     @duplicates  (int)
-    @orientation (str)
+    @direction   (str)
     
-    Generate_Name(str, int, str) -> str
+    Generate_Name(str, str, int, str) -> str
     """
     # Duplicate string
     s = str(duplicates)
     s = Pad_Str(s, COPY_DIGITS, "0")
     # SB
-    sb = frag_name + "__" + s + orientation
+    sb = unique_id + frag_name + "__" + s + orientation
     return sb
 
 
@@ -953,13 +973,14 @@ def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
     trunc_dist = DEFAULT__trunc_dist
     trunc_param = DEFAULT__trunc_param
     threads = DEFAULT__threads
+    unique_id_mod = DEFAULT__STR__unique_id_mod
     
     # Validate optional inputs (except output path)
     while inputs:
         arg = inputs.pop(0)
         
         # Confirm valid flag
-        if arg in ["-p", "-x"]: # Second argument
+        if arg in ["-p", "-x", "-u"]: # Second argument
             try:
                 arg2 = inputs.pop(0)
             except:
@@ -1017,6 +1038,8 @@ def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
             if threads == -1:
                 PRINT.printE(STR__invalid_threads.format(s = arg2))
                 return 1
+        elif arg == "-u":
+            unique_id_mod = arg2
         else:
             # Determine type
             if arg == "-q": dist = "quality score"
@@ -1075,7 +1098,7 @@ def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
     exit_state = Generate_Reads(path_in, [path_out_r1, path_out_r2], phred,
             [len_1, len_2], [avg_quality, quality_dist, quality_param],
             [avg_dupes, dupes_dist, dupes_param], [min_dupes, max_dupes],
-            [avg_trunc, trunc_dist, trunc_param], threads)
+            [avg_trunc, trunc_dist, trunc_param], threads, unique_id_mod)
     
     # Exit
     if exit_state == 0: return 0
