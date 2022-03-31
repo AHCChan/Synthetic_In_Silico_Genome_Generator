@@ -528,6 +528,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
                 o.Write_1(f.Get())
                 basepairs_original += 1
             f.Close()
+            o.Newline()
             o.Close()
             if current_chr_name:
                 s.write(current_chr_name + "\t" + str(total_index) + "\n")
@@ -582,8 +583,9 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
         total_index += 1
         o.Write_1(f.Get())
         basepairs_original += 1
-    f.Close()
+    o.Newline()
     o.Close()
+    f.Close()
     
     if current_chr_name:
         s.write(current_chr_name + "\t" + str(total_index) + "\n")
