@@ -372,7 +372,7 @@ def Extract_Sequences(input_genome, input_coordinates, overlap, output_genome,
                 current_index += 1
                 w.Write_1(f.Get())
                 basepairs_original += 1
-            w.Newline()
+            if w.IsOpen(): w.Newline()
             f.Close()
             if current_chr_name:
                 s.write(current_chr_name + "\t" + str(current_index) + "\n")
