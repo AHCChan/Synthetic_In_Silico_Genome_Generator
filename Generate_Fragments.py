@@ -605,7 +605,7 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
     PRINT.printP(STR__GenFrags_begin)
     for path in paths_in:
         outcome = Generate_Fragments__FILE(path, o, depth_settings,
-                read_len, frag_settings, method_settings)
+                read_len, frag_settings, method_settings, unique_id_mod)
         if outcome: outcomes.append(outcome)
         else:
             o.close()
@@ -619,7 +619,7 @@ def Generate_Fragments(path_in, path_out, depth_settings, read_len,
     return 0
 
 def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
-            frag_settings, method_settings):
+            frag_settings, method_settings, unique_id_mod):
     """
     Generate a series of DNA fragments from the DNA template in the input file
     specified by [path_in].
@@ -651,13 +651,18 @@ def Generate_Fragments__FILE(path_in, output, depth_settings, read_len,
             ([int, *...])
             The "method for determining fragment starts and ends" settings.
             See Generate_Fragments() documentation for details.
+    @unique_id_mod
+            (str)
+            A string prefix which forms part of the fragment ID. Allows
+            fragments from different runs to be pooled together and still have
+            unique IDs relative to each other.
     
     Return a list containing the number of number of fragments generated and
     their total length.
     Return an empty list if an error occured.
     
     Generate_Fragments(str, str/file, [int, int, float], int, [int, int, float],
-            [int, *...]) -> [int, int]
+            [int, *...], str) -> [int, int]
     """
     # Metrics setup
     count = 0

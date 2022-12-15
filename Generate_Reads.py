@@ -560,7 +560,7 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
         frag = f.Get_Current_SOFT()
         metrics = Generate_Reads_From_Frag(frag, o, phred, read_lengths,
             quality_settings, duplicate_settings, duplicate_minmax,
-            truncation_settings, threading)
+            truncation_settings, threading, unique_id_mod)
         # Update metrics
         fragments += 1
         reads += metrics[0]
@@ -585,7 +585,7 @@ def Generate_Reads(path_in, paths_out, phred, read_lengths, quality_settings,
 
 def Generate_Reads_From_Frag(frag, outputs, phred, read_lengths,
             quality_settings, duplicate_settings, duplicate_minmax,
-            truncation_settings, threading):
+            truncation_settings, threading, unique_id_mod):
     """
     Generate a number of DNA reads from a given DNA fragment.
     
@@ -833,7 +833,7 @@ def Generate_Name(unique_id, frag_name, duplicates, direction):
     s = str(duplicates)
     s = Pad_Str(s, COPY_DIGITS, "0")
     # SB
-    sb = unique_id + frag_name + "__" + s + orientation
+    sb = unique_id + frag_name + "__" + s + direction
     return sb
 
 
