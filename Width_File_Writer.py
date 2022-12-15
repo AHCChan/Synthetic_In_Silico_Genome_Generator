@@ -150,7 +150,17 @@ class Width_File_Writer(File_Writer):
         self._index = 0
     
     # File I/O Methods #########################################################
-    
+
+    def Close_Newline(self):
+        """
+        Close the object's file if the file is open. Do nothing if the object
+        does not have a file open.
+        
+        If the file is open, ensure that the file ends with a NEWLINE character.
+        """
+        if self._index != 0: self.Newline()
+        self.Close()
+        
     def Close(self):
         """
         Close the object's file if the file is open. Do nothing if the object
