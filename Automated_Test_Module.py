@@ -9,32 +9,38 @@ working correctly.
 It does not test whether or not the code works from Command Line.
 """
 
-# Start ########################################################################
+# Define Test Function #########################################################
 
-print("Running automated tests for SISGG package...\n")
+def SISGG_Automated_Test():
+    """
+    """
+    # Start ####################################################################
+    print("Running automated tests for SISGG package...\n")
+    
+    
+    
+    # Missing Programs #########################################################
+    print("Checking to make sure all files are present...\n")
+    
+    
+    
+    # Missing Dependencies #####################################################
+    print("Checking to make sure all dependencies are present...\n")
+    
+    
+    
+    # Core Functionality #######################################################
+    print("Commencing testing of core functionality...\n")
+    
+    
+    
+    # Finish ###################################################################
+    print("Testing complete.\n")
 
 
 
-# Missing Programs #############################################################
+# Call Test Function ###########################################################
 
-print("Checking to make sure all files are present...\n")
-
-
-
-# Missing Dependencies #########################################################
-
-print("Checking to make sure all dependencies are present...\n")
-
-
-
-# Core Functionality ###########################################################
-
-print("Commencing testing of core functionality...\n")
-
-
-
-# Start ########################################################################
-
-print("Testing complete.\n")
+SISGG_Automated_Test()
 
 
