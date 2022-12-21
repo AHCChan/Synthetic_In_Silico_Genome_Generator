@@ -1,0 +1,26 @@
+INSTRUCTIONS
+
+To manually test the SISGG code, open up the Testing_Commands.txt document and use the commands.
+    * Use them one by one, in either Command Prompt (Windows) or Terminal (Mac).
+    * Use them from inside the Testing_Before directory.
+
+Compare the newly created files with the files in the Testing_After folder. If the code works, the files should be the same.
+
+
+
+CAVEATS
+
+You may need to modify the Python path in accordance with your own machine's specifications. (Or simply call Python if the appropriate modifications have been made to System Path.)
+
+The output of Random Chromosome generator:
+    * F001__Chr_Sizes (folder)
+    * F002__Random_Chromosomes
+... can only be used as a reference and not in a 1-for-1 comparison since the chromosomes generated are random and will be different every time.
+
+
+
+FEEDBACK
+
+Feel free to contact Angelo Chan (angelo.hoi.chung.chan@gmail.com) if you have any questions, feedback, or bugs to report.
+
+Note that the testing process was designed this way to maximize accessibility and minimize dependencies.

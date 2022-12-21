@@ -1,38 +1,38 @@
 
-C:\Python27\python.exe ..\Generate_Random_Chromosomes.py chr_sizes__test_001.tsv
+C:\Python27\Python.exe ..\Generate_Random_Chromosomes.py F001__Chr_Sizes.tsv
 
-C:\Python27\python.exe ..\Generate_Random_Chromosomes.py chr_sizes__test_001.tsv -o chr_sizes__test_002 -w 40 -m GC 90
+C:\Python27\Python.exe ..\Generate_Random_Chromosomes.py F001__Chr_Sizes.tsv -o F002__Random_Chromosomes.tsv -w 40 -m GC 90
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_004__FRAGMENTS.fa -r 150
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome -o F004__FRAGMENTS.fa -r 150
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_005__FRAGMENTS.fa -l 300 -f G 1
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome -o F005__FRAGMENTS.fa -l 300 -f G 1
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_006__FRAGMENTS.fa -c G 0.1
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome -o F006__FRAGMENTS.fa -c G 0.1
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_007__FRAGMENTS.fa -f N 200
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome -o F007__FRAGMENTS.fa -f N 200
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_008__FRAGMENTS.fa -l 550 -f U 50
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome -o F008__FRAGMENTS.fa -l 550 -f U 50
 
-C:\Python27\python.exe ..\Generate_Fragments.py chr_sizes__test_003 -o chr_sizes__test_009__FRAGMENTS.fa -l 800 -f N 0 -d 20
+C:\Python27\Python.exe ..\Generate_Fragments.py F003__Genome -o F009__FRAGMENTS.fa -l 800 -f N 0 -d 20
 
-C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa
+C:\Python27\Python.exe ..\Generate_Reads.py F004__FRAGMENTS.fa
 
-C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_011_r1.fq test_011_r2.fq 
+C:\Python27\Python.exe ..\Generate_Reads.py F004__FRAGMENTS.fa -o F010__r1.fq F010__r2.fq 
 
-C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_012_r1.fq test_012_r2.fq -q 0 N 0
+C:\Python27\Python.exe ..\Generate_Reads.py F004__FRAGMENTS.fa -o F011__r1.fq F011__r2.fq -q 0 N 0
 
-C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_013_r1.fq test_013_r2.fq -t 2 G 0.01
+C:\Python27\Python.exe ..\Generate_Reads.py F004__FRAGMENTS.fa -o F012__r1.fq F012__r2.fq -t 2 G 0.01
 
-C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_014_r1.fq test_014_r2.fq -d 3 U 2 -m 1 5
+C:\Python27\Python.exe ..\Generate_Reads.py F004__FRAGMENTS.fa -o F013__r1.fq F013__r2.fq -d 3 U 2 -m 1 5
 
-C:\Python27\python.exe ..\Generate_Reads.py chr_sizes__test_004__FRAGMENTS.fa -o test_015_r1.fq x -r 75 0
+C:\Python27\Python.exe ..\Generate_Reads.py F004__FRAGMENTS.fa -o F014__r1.fq x -r 75 0
 
-C:\Python27\python.exe ..\Sequence_Extractor.py chr_sizes__test_017 rmsk__MOD__test_017.tsv 
+C:\Python27\Python.exe ..\Sequence_Extractor.py F017__Genome F017__RMSK__MOD__test.tsv 
 
-C:\Python27\python.exe ..\Sequence_Extractor.py chr_sizes__test_017 rmsk__MOD__test_018.tsv -d Y -o chr_sizes__test_018__EDITED chr_sizes__test_018__SEQS chr_sizes__test_018__new_coords.tsv chr_sizes__test_018__new_chr_sizes.tsv
+C:\Python27\Python.exe ..\Sequence_Extractor.py F017__Genome F018__RMSK__MOD__test.tsv -d Y -o F019__Genome__EDITED F020__Extracted_Sequences F021__New_Coords.tsv F022__New_Chr_Sizes.tsv
 
-C:\Python27\python.exe ..\Sequence_Inserter.py chr_sizes__test_017__EXCISED chr_sizes__test_017__NEW_COORDS.tsv chr_sizes__test_017__EXTRACTS
+C:\Python27\Python.exe ..\Sequence_Inserter.py F019__Genome__EDITED F021__New_Coords.tsv F020__Extracted_Sequences
 
-C:\Python27\python.exe ..\Sequence_Inserter.py chr_sizes__test_018__EDITED chr_sizes__test_018__new_coords.tsv chr_sizes__test_018__SEQS -o test_018__post_insertion_genome test_018__post_insertion_coords.tsv chr_sizes__test_018__final_coords.tsv -a 0 0 0 Y
+C:\Python27\Python.exe ..\Sequence_Inserter.py F019__Genome__EDITED F021__New_Coords.tsv F020__Extracted_Sequences -o F023__Post_Insertion_Genome F024__Post_Insertion_Coords.tsv F025__Final_Coords.tsv -a 0 0 0 Y
