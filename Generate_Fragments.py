@@ -1000,7 +1000,7 @@ def Parse_Command_Line_Input__Generate_Fragments(raw_command_line_input):
         elif arg == "-d": # Depth of coverage
             depth = arg2
             depth = Validate_Float_Positive(arg2)
-            if depth == 0:
+            if depth == -1:
                 PRINT.printE(STR__invalid_depth.format(s = arg2))
                 return 1
         elif arg == "-c": # Coverage parameters
