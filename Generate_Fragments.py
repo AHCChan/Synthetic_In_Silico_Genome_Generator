@@ -203,7 +203,7 @@ OPTIONAL:
     method_sup
         
         Supplementary inputs, as required, for deciding where fragments can be
-        generated. Currently not reelvant because the only method implemented
+        generated. Currently not relevant because the only method implemented
         does not require any additional inputs.
     
     unique_id_mod
