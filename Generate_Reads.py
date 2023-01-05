@@ -319,6 +319,11 @@ ERROR: Invalid read lengths:
 Please specify non-negative integers, at least one of which should also be
 non-zero."""
 
+STR__invalid_phred = """
+ERROR: Invalid phred system specified:
+    {s}
+Please specify either "phred33" or "phred64"."""
+
 STR__min_dupe = """
 ERROR: Invalid minimum number of duplicates: {s}
 Please specify a non-negative integer."""
