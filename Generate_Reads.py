@@ -324,10 +324,10 @@ ERROR: Invalid phred system specified:
     {s}
 Please specify either "phred33" or "phred64"."""
 
-STR__min_dupe = """
+STR__invalid_min_dupe = """
 ERROR: Invalid minimum number of duplicates: {s}
 Please specify a non-negative integer."""
-STR__max_dupe = """
+STR__invalid_max_dupe = """
 ERROR: Invalid maximum number of duplicates: {s}
 Please specify a positivee integer."""
 
