@@ -350,7 +350,7 @@ For the parameter, depending on the distribution model chosen, please specify:
     UNIFORM - A non-negative integer."""
 
 STR__invalid_threads = """
-ERROR: Invalid number of threads specified: (s}
+ERROR: Invalid number of threads specified: {s}
 Please specify a positive integer."""
 
 
@@ -1060,6 +1060,9 @@ def Parse_Command_Line_Input__Generate_Reads(raw_command_line_input):
             if not params:
                 PRINT.printE(STR__invalid_params.format(s=dist, d=arg3, p=arg4))
                 return 1
+            if avg == 0 and params[0] == DIST.GAMMA:
+                PRINT.printE(STR__invalid_params.format(s=dist, d=arg3, p=arg4))
+                return 1
             
             # Type specific
             if arg == "-q":
@@ -1150,7 +1153,7 @@ def Validate_Dist_Params(method, param):
         if param == -1: return []
     elif dist == 2: # Gamma
         param = Validate_Float_NonZero(param)
-        if param == -1: return []
+        if param == 0: return []
     elif dist == 3: # Uniform
         param = Validate_Int_NonNeg(param)
         if param == -1: return []
