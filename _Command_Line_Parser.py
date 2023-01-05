@@ -527,7 +527,7 @@ def Validate_Float_NonNeg(string):
 def Validate_Float_NonZero(string):
     """
     Validates and returns the non-zero float specified.
-    Return -1 if the input is invalid.
+    Return 0 if the input is invalid.
     
     @string
         (str)
@@ -538,8 +538,8 @@ def Validate_Float_NonZero(string):
     try:
         n = float(string)
     except:
-        return -1
-    if n == 0: return -1
+        return 0
+    if n == 0: return 0
     return n
 
 def Validate_Table_Type(string):
