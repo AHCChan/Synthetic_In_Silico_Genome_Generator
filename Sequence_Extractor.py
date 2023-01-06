@@ -609,6 +609,7 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
             if overlap == None:
                 PRINT.printE(STR__invalid_bool)
                 PRINT.printE(STR__use_help)
+                return 1
         elif arg == "-o": # Output files
             try: # Third and fourth argument
                 arg3 = inputs.pop(0)
