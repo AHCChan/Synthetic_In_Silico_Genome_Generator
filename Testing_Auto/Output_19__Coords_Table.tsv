@@ -1,0 +1,4 @@
+chr1	162	241	+	TE_000000001	FILE(TE_000000001)	PseudoT1	PseudoTransposon	Placeholder3
+chr1	402	481	-	TE_000000002	FILE(TE_000000002)	Gs	SimpleRepeat	Placeholder3
+chr2	142	181	-	TE_000000003	FILE(TE_000000003)	PseudoT2	PseudoTransposon	Placeholder3
+chr2	182	241	+	TE_000000004	FILE(TE_000000004)	CGs	SimpleRepeat	Placeholder3
