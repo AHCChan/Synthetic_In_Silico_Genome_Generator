@@ -18,7 +18,7 @@ USAGE:
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
             <sequences_folder> [-o <output_folder> <output_coordinates_table>
             <output_chr_sizes_file>] [-a <window_min> <window_max>
-            <errors_max> Y|N] [-m 
+            <errors_max> Y|N] [-m Y|N]
 
 
 
@@ -181,6 +181,9 @@ EXAMPLES SCENARIO EXPLANATION:
     first 6 nucleotides of the post-junction component sequence, and if the
     two have 1 or fewer mismatches, the "junction" will not be duplicated in the
     resulting chimeric output sequence.
+    
+    3:
+    Insert sequences and mask them.
 
 EXAMPLES:
     
@@ -190,13 +193,16 @@ EXAMPLES:
     python27 Sequence_Inserter.py Path/PostExGenomeFolder Path/PostEdCoords.tsv
             Path/ExtractedSequencesFolder -o Path/FinalGenomeFolder
             Path/FinalCoords.tsv Path/FinalSizes.tsv -a 6 7 1 Y
+    
+    python27 Sequence_Inserter.py Path/PostExGenomeFolder Path/PostEdCoords.tsv
+            Path/ExtractedSequencesFolder -m Y
 
 USAGE:
     
     python27 Sequence_Inserter.py <genome_folder> <coordinates_table>
             <sequences_folder> [-o <output_folder> <output_coordinates_table>
             <output_chr_sizes_file>] [-a <window_min> <window_max>
-            <errors_max> Y|N]
+            <errors_max> Y|N] [-m Y|N]
 """
 
 NAME = "Sequence_Inserter.py"
@@ -763,7 +769,6 @@ def Parse_Command_Line_Input__Insert_Sequences(raw_command_line_input):
                 PRINT.printE(STR__use_help)
                 return 1
         except:
-            print arg
             PRINT.printE(STR__insufficient_inputs)
             PRINT.printE(STR__use_help)
             return 1
