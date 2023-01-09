@@ -59,13 +59,13 @@ REQUIREMENTS (INPUT FILES)
 A featureless, bare minimum synthetic genome only requires the following input
 files:
 
-    1) A chromosome sizes file
+    1) A chromosome sizes file (TSV)
 
 However, a standard synthetic genome would require the following input files:
 
-    1) A chromosome sizes file
-    2) ...
-    3) ...
+    1) A chromosome sizes file (TSV)
+    2) A folder of genetic element sequences (FASTA files)
+    3) A coordinates table for where to insert the genetic elements
 
 
 
@@ -98,6 +98,8 @@ Supporting files are available at:
     https://github.com/AHCChan/NSeq_Match
     https://github.com/AHCChan/ECSASS_Parser
     https://github.com/AHCChan/Phred_Library
+
+You can use the automated testing module (Automated_Test_Module.py) to see if all modules are working properly. The automated testing module is not exhaustive and may not necessarily diagnose all possible problems, but it may be a good place to start.
 
 
 
