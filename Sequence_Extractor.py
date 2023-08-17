@@ -240,6 +240,7 @@ Do you wish to overwrite them in the event of a naming clash? (y/n): """
 
 LIST__yes = ["Y", "y", "YES", "Yes", "yes", "T", "t", "TRUE", "True", "true"]
 LIST__no = ["N", "n", "NO", "No", "no", "F", "f", "FALSE", "False", "false"]
+# DEPRECATED / LEGACY - Lists exist in _Command_Line_Parser.py
 
 
 
