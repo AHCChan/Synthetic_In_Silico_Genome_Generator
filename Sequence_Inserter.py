@@ -519,7 +519,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
         elements = t.Get_Current()
         chr_name = elements[0]
         start = int(elements[1])
-        start_ = start
+        start_ = start - 1
         end = int(elements[2])
         size = end-start+1
         direction = elements[3]
