@@ -285,7 +285,7 @@ WARNING: Irregular directionality symbol detected.
         a forward-oriented sequence."""
 
 STR__min_greater_than_max = """
-ERROR: The mminimum permitted overlap window size must not be greater than the
+ERROR: The minimum permitted overlap window size must not be greater than the
 maximum permitted overlap window size."""
 
 STR__invalid_min_oh = """
@@ -504,7 +504,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
     o.Set_Width(DEFAULT__width)
     o.Set_Newline("\n")
     o.Toggle_Printing_M(False)
-
+    
     c = open(output_coordinates , "w") # New coordinates table
     
     s = open(output_chr_sizes, "w") # New chromosome sizes
@@ -577,7 +577,7 @@ def Insert_Sequences(input_genome, input_coordinates, input_sequences,
                 direction + "\t" + "\t".join(retain) + "\n")
         total_index += length
         basepairs_inserted += length
-            
+    
     PRINT.printP(STR__Insert_complete)
     
     # Close up
