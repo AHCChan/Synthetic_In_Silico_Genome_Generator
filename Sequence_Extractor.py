@@ -635,7 +635,7 @@ def Parse_Command_Line_Input__Extract_Sequences(raw_command_line_input):
     valid_out_2 = Validate_Write_Path__FOLDER(path_out_seqs)
     valids = [valid_out_1, valid_out_2]
     if valid_out_1 == 0 and valid_out_2 == 0: pass
-    elif valid_out_1 == 1 and valid_out_1 == 1:
+    elif valid_out_1 == 1 and valid_out_2 == 1:
         PRINT.printM(STR__overwrite_accept)
     else:
         if 2 in valids: PRINT.printE(STR__IO_error_write_folder_cannot)
