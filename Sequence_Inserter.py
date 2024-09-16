@@ -271,7 +271,7 @@ from Width_File_Writer import *
 # Strings ######################################################################
 
 STR__use_help = "\nUse the -h option for help:\n\t python "\
-"Sequence_Extractor.py -h"
+"Sequence_Inserter.py -h"
 
 STR__error_no_FASTA = """
 ERROR: No FASTA files detected in:
